@@ -555,6 +555,131 @@ declare namespace App {
           };
           creativity: string;
         };
+        /** 系统管理 8 个子页面通用文案 */
+        system: {
+          user: {
+            title: string;
+            form: {
+              username: string;
+              nickname: string;
+              password: string;
+              email: string;
+              phone: string;
+              gender: string;
+              dept: string;
+              roles: string;
+              posts: string;
+              status: string;
+              remark: string;
+            };
+            action: {
+              resetPwd: string;
+              changeStatus: string;
+            };
+          };
+          role: {
+            title: string;
+            form: {
+              name: string;
+              code: string;
+              dataScope: string;
+              menus: string;
+              departments: string;
+              status: string;
+              remark: string;
+            };
+            action: { assignMenus: string };
+          };
+          menu: {
+            title: string;
+            form: {
+              parent: string;
+              name: string;
+              title: string;
+              path: string;
+              component: string;
+              permission: string;
+              icon: string;
+              type: string;
+              order: string;
+              i18nKey: string;
+              keepAlive: string;
+              hideInMenu: string;
+              externalLink: string;
+              status: string;
+              remark: string;
+            };
+          };
+          dept: {
+            title: string;
+            form: {
+              parent: string;
+              name: string;
+              code: string;
+              leader: string;
+              phone: string;
+              email: string;
+              status: string;
+              remark: string;
+            };
+          };
+          post: {
+            title: string;
+            form: {
+              name: string;
+              code: string;
+              status: string;
+              sortOrder: string;
+              remark: string;
+            };
+          };
+          dict: {
+            title: string;
+            form: {
+              name: string;
+              code: string;
+              status: string;
+              remark: string;
+            };
+            data: {
+              label: string;
+              value: string;
+              cssClass: string;
+              listClass: string;
+              isDefault: string;
+              status: string;
+              remark: string;
+            };
+          };
+          config: {
+            title: string;
+            form: {
+              name: string;
+              code: string;
+              value: string;
+              valueType: string;
+              isSystem: string;
+              status: string;
+              remark: string;
+            };
+          };
+          log: {
+            title: string;
+            fields: {
+              username: string;
+              module: string;
+              description: string;
+              operationType: string;
+              method: string;
+              url: string;
+              ip: string;
+              status: string;
+              costTime: string;
+              operatedAt: string;
+            };
+            action: { clean: string };
+          };
+        };
       };
       form: {
         required: string;

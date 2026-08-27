@@ -229,7 +229,16 @@ const local: App.I18n.Schema = {
     404: 'Page Not Found',
     500: 'Server Error',
     'iframe-page': 'Iframe',
-    home: 'Home'
+    home: 'Home',
+    'system': 'System',
+    'system_config': 'Configs',
+    'system_dept': 'Departments',
+    'system_dict': 'Dictionary',
+    'system_log': 'Operation Logs',
+    'system_menu': 'Menus',
+    'system_post': 'Posts',
+    'system_role': 'Roles',
+    'system_user': 'Users',
   },
   page: {
     login: {
@@ -306,6 +315,44 @@ const local: App.I18n.Schema = {
         desc5: 'Soybean just wrote some of the workbench pages casually, and it was enough to see!'
       },
       creativity: 'Creativity'
+    },
+    system: {
+      user: {
+        title: 'User Management',
+        form: { username: 'Username', nickname: 'Nickname', password: 'Initial Password', email: 'Email', phone: 'Phone', gender: 'Gender', dept: 'Department', roles: 'Roles', posts: 'Posts', status: 'Status', remark: 'Remark' },
+        action: { resetPwd: 'Reset Password', changeStatus: 'Enable/Disable' }
+      },
+      role: {
+        title: 'Role Management',
+        form: { name: 'Role Name', code: 'Role Code', dataScope: 'Data Scope', menus: 'Menu Permissions', departments: 'Data Scope Departments', status: 'Status', remark: 'Remark' },
+        action: { assignMenus: 'Assign Menus' }
+      },
+      menu: {
+        title: 'Menu Management',
+        form: { parent: 'Parent Menu', name: 'Route Name', title: 'Display Name', path: 'Route Path', component: 'Component Path', permission: 'Permission', icon: 'Icon', type: 'Type', order: 'Sort Order', i18nKey: 'i18n Key', keepAlive: 'Keep Alive', hideInMenu: 'Hide in Menu', externalLink: 'External Link', status: 'Status', remark: 'Remark' }
+      },
+      dept: {
+        title: 'Department Management',
+        form: { parent: 'Parent Department', name: 'Department Name', code: 'Department Code', leader: 'Leader', phone: 'Phone', email: 'Email', status: 'Status', remark: 'Remark' }
+      },
+      post: {
+        title: 'Post Management',
+        form: { name: 'Post Name', code: 'Post Code', status: 'Status', sortOrder: 'Sort Order', remark: 'Remark' }
+      },
+      dict: {
+        title: 'Dictionary Management',
+        form: { name: 'Dictionary Name', code: 'Dictionary Code', status: 'Status', remark: 'Remark' },
+        data: { label: 'Label', value: 'Value', cssClass: 'CSS Class', listClass: 'List Class', isDefault: 'Is Default', status: 'Status', remark: 'Remark' }
+      },
+      config: {
+        title: 'Config Management',
+        form: { name: 'Config Name', code: 'Config Key', value: 'Config Value', valueType: 'Value Type', isSystem: 'System Built-in', status: 'Status', remark: 'Remark' }
+      },
+      log: {
+        title: 'Log Management',
+        fields: { username: 'Username', module: 'Module', description: 'Description', operationType: 'Operation Type', method: 'Method', url: 'URL', ip: 'IP', status: 'Status', costTime: 'Cost Time', operatedAt: 'Operated At' },
+        action: { clean: 'Clean N Days Ago' }
+      }
     }
   },
   form: {

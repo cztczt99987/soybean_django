@@ -225,7 +225,16 @@ const local: App.I18n.Schema = {
     404: '页面不存在',
     500: '服务器错误',
     'iframe-page': '外链页面',
-    home: '首页'
+    home: '首页',
+    'system': '系统管理',
+    'system_config': '参数设置',
+    'system_dept': '部门管理',
+    'system_dict': '字典管理',
+    'system_log': '日志管理',
+    'system_menu': '菜单管理',
+    'system_post': '岗位管理',
+    'system_role': '角色管理',
+    'system_user': '用户管理',
   },
   page: {
     login: {
@@ -302,6 +311,44 @@ const local: App.I18n.Schema = {
         desc5: 'Soybean 刚才把工作台页面随便写了一些，凑合能看了！'
       },
       creativity: '创意'
+    },
+    system: {
+      user: {
+        title: '用户管理',
+        form: { username: '登录账号', nickname: '用户昵称', password: '初始密码', email: '邮箱', phone: '手机号', gender: '性别', dept: '归属部门', roles: '角色', posts: '岗位', status: '状态', remark: '备注' },
+        action: { resetPwd: '重置密码', changeStatus: '启用/停用' }
+      },
+      role: {
+        title: '角色管理',
+        form: { name: '角色名称', code: '角色编码', dataScope: '数据权限', menus: '菜单权限', departments: '数据权限部门', status: '状态', remark: '备注' },
+        action: { assignMenus: '分配菜单' }
+      },
+      menu: {
+        title: '菜单管理',
+        form: { parent: '上级菜单', name: '路由名', title: '显示名称', path: '路由路径', component: '组件路径', permission: '权限标识', icon: '图标', type: '类型', order: '排序', i18nKey: '国际化键', keepAlive: '缓存页面', hideInMenu: '隐藏菜单', externalLink: '外链', status: '状态', remark: '备注' }
+      },
+      dept: {
+        title: '部门管理',
+        form: { parent: '上级部门', name: '部门名称', code: '部门编码', leader: '负责人', phone: '联系电话', email: '邮箱', status: '状态', remark: '备注' }
+      },
+      post: {
+        title: '岗位管理',
+        form: { name: '岗位名称', code: '岗位编码', status: '状态', sortOrder: '排序', remark: '备注' }
+      },
+      dict: {
+        title: '字典管理',
+        form: { name: '字典名称', code: '字典编码', status: '状态', remark: '备注' },
+        data: { label: '标签', value: '键值', cssClass: '样式属性', listClass: '回显样式', isDefault: '是否默认', status: '状态', remark: '备注' }
+      },
+      config: {
+        title: '参数设置',
+        form: { name: '参数名称', code: '参数键名', value: '参数键值', valueType: '类型', isSystem: '系统内置', status: '状态', remark: '备注' }
+      },
+      log: {
+        title: '日志管理',
+        fields: { username: '账号', module: '模块', description: '描述', operationType: '操作类型', method: '方法', url: 'URL', ip: 'IP', status: '状态', costTime: '耗时', operatedAt: '操作时间' },
+        action: { clean: '清理N天前' }
+      }
     }
   },
   form: {
