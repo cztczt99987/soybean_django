@@ -12,20 +12,51 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 
+import environ
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# -------- 加载 .env --------
+# 规则: 优先读取 backend/.env; 不存在也不报错, 保持 SQLite 默认可运行
+env = environ.Env(
+    DJANGO_DEBUG=(bool, True),
+    DJANGO_SECRET_KEY=(str, ""),
+    DJANGO_ALLOWED_HOSTS=(list, []),
+    DJANGO_LANGUAGE_CODE=(str, "en-us"),
+    DJANGO_TIME_ZONE=(str, "UTC"),
+    # Database
+    DB_ENGINE=(str, "sqlite3"),
+    DB_HOST=(str, "127.0.0.1"),
+    DB_PORT=(int, 3306),
+    DB_NAME=(str, "soybean_django"),
+    DB_USER=(str, "root"),
+    DB_PASSWORD=(str, ""),
+    DB_OPTIONS_CHARSET=(str, ""),
+    # Redis
+    REDIS_URL=(str, ""),
+    REDIS_HOST=(str, "127.0.0.1"),
+    REDIS_PORT=(int, 6379),
+    REDIS_DB=(int, 1),
+    REDIS_PASSWORD=(str, ""),
+    REDIS_KEY_PREFIX=(str, "soybean_django:"),
+)
+_env_path = BASE_DIR / ".env"
+if _env_path.exists():
+    environ.Env.read_env(str(_env_path))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^^&dcel9*4-n65sswlh-5r!(ie)wpojsu*kor1dksu3%yh-%vg'
+_DEFAULT_SECRET_KEY = "django-insecure-^^&dcel9*4-n65sswlh-5r!(ie)wpojsu*kor1dksu3%yh-%vg"
+SECRET_KEY = env("DJANGO_SECRET_KEY") or _DEFAULT_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env("DJANGO_DEBUG")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 
 
 # Application definition
@@ -77,12 +108,41 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+_DB_ENGINE = env("DB_ENGINE").strip().lower()
+if _DB_ENGINE == "sqlite3":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    if _DB_ENGINE == "mysql":
+        _driver = "django.db.backends.mysql"
+    elif _DB_ENGINE in ("postgresql", "postgres", "pg"):
+        _driver = "django.db.backends.postgresql"
+    else:
+        raise ValueError(
+            f"不支持的 DB_ENGINE={_DB_ENGINE!r}; 可选: sqlite3 / mysql / postgresql"
+        )
+
+    _options = {}
+    _charset = env("DB_OPTIONS_CHARSET")
+    if _charset:
+        _options["charset"] = _charset
+
+    DATABASES = {
+        "default": {
+            "ENGINE": _driver,
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER"),
+            "PASSWORD": env("DB_PASSWORD"),
+            "HOST": env("DB_HOST"),
+            "PORT": env("DB_PORT"),
+        }
+    }
+    if _options:
+        DATABASES["default"]["OPTIONS"] = _options
 
 
 # Password validation
@@ -107,9 +167,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = env("DJANGO_LANGUAGE_CODE")
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = env("DJANGO_TIME_ZONE")
 
 USE_I18N = True
 
@@ -142,3 +202,34 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10
 }
+
+# Cache / Redis
+# 当 REDIS_URL 有值时启用 Redis 缓存; 否则使用本地内存缓存, 不依赖外部服务
+_REDIS_URL = env("REDIS_URL")
+if not _REDIS_URL:
+    # 拆分字段兜底: REDIS_URL 留空时, 用 HOST/PORT/DB/PASSWORD 拼一个 URL
+    _host = env("REDIS_HOST")
+    _port = env("REDIS_PORT")
+    _db = env("REDIS_DB")
+    _pwd = env("REDIS_PASSWORD")
+    if _host:
+        _auth = f":{_pwd}@" if _pwd else ""
+        _REDIS_URL = f"redis://{_auth}{_host}:{_port}/{_db}"
+
+if _REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _REDIS_URL,
+            "KEY_PREFIX": env("REDIS_KEY_PREFIX"),
+            "TIMEOUT": 300,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "soybean-default",
+        }
+    }
+
