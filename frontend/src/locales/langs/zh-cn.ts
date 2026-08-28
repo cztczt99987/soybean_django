@@ -10,6 +10,8 @@ const local: App.I18n.Schema = {
     action: '操作',
     add: '新增',
     addSuccess: '添加成功',
+    addChildMenu: '新增子菜单',
+    addChildDept: '新增子部门',
     backToHome: '返回首页',
     batchDelete: '批量删除',
     cancel: '取消',

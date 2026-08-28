@@ -148,5 +148,62 @@ declare namespace Api {
       endTime?: string;
       [key: string]: any;
     }
+
+    /** 各模块搜索参数（分页 + keyword + status 基础 + 模块特有字段） */
+    interface BaseSearchParams extends Api.Common.CommonSearchParams {
+      keyword?: string | null;
+      status?: '1' | '0' | null;
+    }
+
+    type UserSearchParams = BaseSearchParams & {
+      username?: string | null;
+      nickname?: string | null;
+      phone?: string | null;
+      deptId?: number | null;
+      beginTime?: string | null;
+      endTime?: string | null;
+    };
+
+    type RoleSearchParams = BaseSearchParams & {
+      name?: string | null;
+      code?: string | null;
+    };
+
+    type MenuSearchParams = BaseSearchParams & {
+      menuType?: '1' | '2' | '3' | null;
+    };
+
+    type DeptSearchParams = BaseSearchParams;
+
+    type PostSearchParams = BaseSearchParams & {
+      name?: string | null;
+      code?: string | null;
+    };
+
+    type DictTypeSearchParams = BaseSearchParams & {
+      name?: string | null;
+      code?: string | null;
+    };
+
+    type DictDataSearchParams = BaseSearchParams & {
+      label?: string | null;
+      dictCode?: string | null;
+    };
+
+    type ConfigSearchParams = BaseSearchParams & {
+      name?: string | null;
+      code?: string | null;
+    };
+
+    type LogSearchParams = BaseSearchParams & {
+      username?: string | null;
+      module?: string | null;
+      description?: string | null;
+      operationType?: OperationType | null;
+      beginTime?: string | null;
+      endTime?: string | null;
+    };
+
+    type OperationType = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9';
   }
 }

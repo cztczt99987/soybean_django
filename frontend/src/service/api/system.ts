@@ -45,7 +45,7 @@ function batchDelete(url: string, ids: (number | string)[]) {
 /** ========== 用户 ========== */
 
 export const userApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.UserSearchParams) =>
     list<Api.System.ListResp<Api.System.User>>('/system/user/', params),
   add: (data: Partial<Api.System.User>) => add<Api.System.User>('/system/user/', data),
   update: (id: number, data: Partial<Api.System.User>) =>
@@ -61,7 +61,7 @@ export const userApi = {
 /** ========== 角色 ========== */
 
 export const roleApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.RoleSearchParams) =>
     list<Api.System.ListResp<Api.System.Role>>('/system/role/', params),
   options: () => request<{ id: number; name: string; code: string }[]>({ url: '/system/role/options/' }),
   add: (data: Partial<Api.System.Role>) => add<Api.System.Role>('/system/role/', data),
@@ -106,7 +106,7 @@ export const deptApi = {
 /** ========== 岗位 ========== */
 
 export const postApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.PostSearchParams) =>
     list<Api.System.ListResp<Api.System.Post>>('/system/post/', params),
   options: () => request<{ id: number; name: string; code: string }[]>({ url: '/system/post/options/' }),
   add: (data: Partial<Api.System.Post>) => add<Api.System.Post>('/system/post/', data),
@@ -147,7 +147,7 @@ export const dictDataApi = {
 /** ========== 参数设置 ========== */
 
 export const configApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.ConfigSearchParams) =>
     list<Api.System.ListResp<Api.System.Config>>('/system/config/', params),
   byKey: (code: string) =>
     request<Api.System.Config | null>({ url: `/system/config/by-key/?code=${encodeURIComponent(code)}` }),

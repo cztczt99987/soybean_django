@@ -1,515 +1,213 @@
-<script setup lang="ts">
-import { computed, h, reactive, ref, watch } from 'vue';
-import { useMessage, useDialog, NSwitch, type FormInst, type FormRules } from 'naive-ui';
-import type { FlatResponseData } from '@sa/axios';
-import { $t } from '@/locales';
+<script setup lang="tsx">
+import { ref } from 'vue';
+import { NButton, NPopconfirm, NSwitch } from 'naive-ui';
+import { userGenderRecord } from '@/constants/business';
+import { userApi } from '@/service/api';
+import { useAppStore } from '@/store/modules/app';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
-import { userApi, deptApi, roleApi, postApi } from '@/service/api';
+import { $t } from '@/locales';
+import UserOperateDrawer from './modules/user-operate-drawer.vue';
+import UserSearch from './modules/user-search.vue';
 
-const message = useMessage();
-const dialog = useDialog();
+const appStore = useAppStore();
 
-const formRef = ref<FormInst | null>(null);
-const queryForm = reactive<{
-  keyword: string;
-  status: '' | '1' | '0';
-  deptId: number | null;
-  beginTime: string | null;
-  endTime: string | null;
-  dateRange: [string, string] | null;
-}>({
-  keyword: '',
-  status: '',
-  deptId: null,
-  beginTime: null,
-  endTime: null,
-  dateRange: null
+const searchParams = ref<Api.System.UserSearchParams>({
+  current: 1,
+  size: 10,
+  keyword: null,
+  username: null,
+  nickname: null,
+  phone: null,
+  status: null,
+  deptId: null
 });
 
-const drawerFormRef = ref<FormInst | null>(null);
-const drawerForm = reactive<{
-  username: string;
-  nickname: string;
-  password: string;
-  email: string;
-  phone: string;
-  gender: '0' | '1' | '2';
-  department_id: number | null;
-  roleIds: number[];
-  postIds: number[];
-  status: '1' | '0';
-  remark: string;
-}>({
-  username: '',
-  nickname: '',
-  password: '',
-  email: '',
-  phone: '',
-  gender: '0',
-  department_id: null,
-  roleIds: [],
-  postIds: [],
-  status: '1',
-  remark: ''
-});
-
-const deptOptions = ref<Api.System.Department[]>([]);
-const roleOptions = ref<{ id: number; name: string; code: string }[]>([]);
-const postOptions = ref<{ id: number; name: string; code: string }[]>([]);
-
-async function loadOptions() {
-  const [deptRes, roleRes, postRes] = await Promise.all([
-    deptApi.tree(),
-    roleApi.options(),
-    postApi.options()
-  ]);
-  if (!deptRes.error) deptOptions.value = deptRes.data || [];
-  if (!roleRes.error) roleOptions.value = roleRes.data || [];
-  if (!postRes.error) postOptions.value = postRes.data || [];
-}
-loadOptions();
-
-type Row = Api.System.User;
-type Resp = FlatResponseData<App.Service.Response, Api.System.ListResp<Row>>;
-type TableInst = ReturnType<typeof useNaivePaginatedTable<Resp, Row>>;
-
-// 先声明为 undefined 再赋值：api 闭包首次同步调用时 tbl 尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
-let tbl: TableInst | undefined;
-// eslint-disable-next-line prefer-const
-tbl = useNaivePaginatedTable<Resp, Row>({
-  api: () => {
-    const params: Api.System.SearchParams = {
-      current: tbl?.pagination?.page ?? 1,
-      size: tbl?.pagination?.pageSize ?? 10,
-      keyword: queryForm.keyword || undefined,
-      status: queryForm.status || undefined,
-      deptId: queryForm.deptId ?? undefined,
-      beginTime: queryForm.dateRange?.[0],
-      endTime: queryForm.dateRange?.[1]
-    };
-    return userApi.list(params);
+const { columns, columnChecks, data, getData, getDataByPage, loading, mobilePagination } = useNaivePaginatedTable({
+  api: () => userApi.list(searchParams.value),
+  transform: response => defaultTransform(response),
+  onPaginationParamsChange: params => {
+    searchParams.value.current = params.page;
+    searchParams.value.size = params.pageSize;
   },
   columns: () => [
-    { type: 'selection', width: 60 },
     {
+      type: 'selection',
+      width: 48
+    },
+    {
+      key: 'index',
       title: $t('common.index'),
-      key: '__index__',
+      align: 'center',
       width: 64,
-      render: (_row, rowIndex) => ((tbl?.pagination?.page ?? 1) - 1) * (tbl?.pagination?.pageSize ?? 10) + rowIndex + 1
+      render: (_, index) => index + 1
     },
-    { title: 'ID', key: 'id', width: 80 },
-    { title: $t('page.system.user.form.username'), key: 'username', width: 140 },
-    { title: $t('page.system.user.form.nickname'), key: 'nickname', width: 140 },
     {
-      title: $t('page.system.user.form.dept'),
+      key: 'username',
+      title: $t('page.system.user.form.username'),
+      align: 'center',
+      width: 120
+    },
+    {
+      key: 'nickname',
+      title: $t('page.system.user.form.nickname'),
+      align: 'center',
+      width: 120
+    },
+    {
       key: 'dept.name',
-      width: 140,
-      render: row => (row.dept ? row.dept.name : '-')
-    },
-    { title: $t('page.system.user.form.phone'), key: 'phone', width: 140 },
-    { title: $t('page.system.user.form.email'), key: 'email', width: 180 },
-    {
-      title: $t('page.system.user.form.gender'),
-      key: 'gender',
-      width: 80,
-      render: row =>
-        ({
-          '0': $t('page.system.common.gender.unknown'),
-          '1': $t('page.system.common.gender.male'),
-          '2': $t('page.system.common.gender.female')
-        })[row.gender] || '-'
-    },
-    {
-      title: $t('page.system.user.form.status'),
-      key: 'status',
+      title: $t('page.system.user.form.dept'),
+      align: 'center',
       width: 120,
-      render: row =>
-        h(
-          NSwitch,
-          {
-            value: row.status === '1',
-            onUpdateValue: (val: boolean) => {
-              changeStatus(row.id, val);
-            },
-            checkedValue: true,
-            uncheckedValue: false
-          },
-          {
+      render: row => row.dept?.name ?? '-'
+    },
+    {
+      key: 'phone',
+      title: $t('page.system.user.form.phone'),
+      align: 'center',
+      width: 140
+    },
+    {
+      key: 'email',
+      title: $t('page.system.user.form.email'),
+      align: 'center',
+      width: 180
+    },
+    {
+      key: 'gender',
+      title: $t('page.system.user.form.gender'),
+      align: 'center',
+      width: 80,
+      render: row => $t(userGenderRecord[row.gender])
+    },
+    {
+      key: 'status',
+      title: $t('page.system.user.form.status'),
+      align: 'center',
+      width: 120,
+      render: row => (
+        <NSwitch value={row.status === '1'} onUpdateValue={(val: boolean) => handleChangeStatus(row.id, val)}>
+          {{
             checked: () => $t('page.system.common.enabled'),
             unchecked: () => $t('page.system.common.disabled')
-          }
-        )
+          }}
+        </NSwitch>
+      )
     },
-    { title: $t('page.system.common.createdAt'), key: 'created_at', width: 180 },
     {
+      key: 'created_at',
+      title: $t('page.system.common.createdAt'),
+      align: 'center',
+      width: 180
+    },
+    {
+      key: 'operate',
       title: $t('common.operate'),
-      key: 'actions',
-      width: 300,
+      align: 'center',
+      width: 240,
       fixed: 'right',
-      render: row =>
-        h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, [
-          createButtonResetPwd(row),
-          createButtonEdit(row),
-          createButtonDelete(row)
-        ])
+      render: row => (
+        <div class="flex-center gap-8px">
+          <NButton size="small" type="warning" ghost onClick={() => handleResetPwd(row.id)}>
+            {$t('page.system.user.action.resetPwd')}
+          </NButton>
+          <NButton type="primary" ghost size="small" onClick={() => edit(row.id)}>
+            {$t('common.edit')}
+          </NButton>
+          <NPopconfirm onPositiveClick={() => handleDelete(row.id)}>
+            {{
+              default: () => $t('common.confirmDelete'),
+              trigger: () => (
+                <NButton type="error" ghost size="small">
+                  {$t('common.delete')}
+                </NButton>
+              )
+            }}
+          </NPopconfirm>
+        </div>
+      )
     }
-  ],
-  transform: defaultTransform
+  ]
 });
 
-const { data, loading, columns, columnChecks, getData, getDataByPage, mobilePagination } = tbl;
-const {
-  drawerVisible,
-  closeDrawer,
-  operateType,
-  handleAdd,
-  editingData,
-  handleEdit,
-  checkedRowKeys,
-  onBatchDeleted,
-  onDeleted
-} = useTableOperate(data, 'id', getData);
+const { drawerVisible, operateType, editingData, handleAdd, handleEdit, checkedRowKeys, onBatchDeleted, onDeleted } =
+  useTableOperate(data, 'id', getData);
 
-const drawerRules = computed<FormRules>(() => ({
-  username: [{ required: true, message: $t('form.required'), trigger: 'blur' }],
-  nickname: [{ required: true, message: $t('form.required'), trigger: 'blur' }],
-  password: [
-    {
-      required: operateType.value === 'add',
-      message: $t('form.required'),
-      trigger: 'blur'
-    }
-  ],
-  email: [
-    {
-      required: true,
-      message: $t('form.email.required'),
-      trigger: 'blur'
-    },
-    {
-      type: 'email',
-      message: $t('form.email.invalid'),
-      trigger: 'blur'
-    }
-  ],
-  phone: [{ required: true, message: $t('form.phone.required'), trigger: 'blur' }],
-  status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
-}));
+async function handleBatchDelete() {
+  await userApi.batchDelete(checkedRowKeys.value.map(Number));
 
-watch(
-  editingData,
-  v => {
-    if (v) {
-      Object.assign(drawerForm, {
-        username: v.username || '',
-        nickname: v.nickname || '',
-        password: '',
-        email: v.email || '',
-        phone: v.phone || '',
-        gender: v.gender || '0',
-        department_id: v.department_id || null,
-        roleIds: v.roles ? v.roles.map(r => r.id) : [],
-        postIds: v.posts ? v.posts.map(p => p.id) : [],
-        status: v.status || '1',
-        remark: v.remark || ''
-      });
-    } else {
-      Object.assign(drawerForm, defaultForm());
-    }
-  },
-  { immediate: true }
-);
-
-function defaultForm() {
-  return {
-    username: '',
-    nickname: '',
-    password: '',
-    email: '',
-    phone: '',
-    gender: '0' as const,
-    department_id: null,
-    roleIds: [],
-    postIds: [],
-    status: '1' as const,
-    remark: ''
-  };
+  onBatchDeleted();
 }
 
-async function onSubmit() {
-  const valid = await drawerFormRef.value?.validate().catch(() => false);
-  if (!valid) {
-    message.warning($t('common.pleaseCheckValue'));
-    return;
-  }
-  const payload: Partial<typeof drawerForm> = { ...drawerForm };
-  if (operateType.value === 'edit' && !payload.password) {
-    delete payload.password;
-  }
-  const { error } =
-    operateType.value === 'add'
-      ? await userApi.add(payload)
-      : await userApi.update(editingData.value!.id, payload);
-  if (error) return;
-  message.success(operateType.value === 'add' ? $t('common.addSuccess') : $t('common.modifySuccess'));
-  closeDrawer();
-  await getData();
+async function handleDelete(id: number) {
+  await userApi.remove(id);
+
+  onDeleted();
 }
 
-async function changeStatus(id: number, val: boolean) {
+function edit(id: number) {
+  handleEdit(id);
+}
+
+async function handleChangeStatus(id: number, val: boolean) {
   const { error } = await userApi.changeStatus(id, val ? '1' : '0');
+
   if (!error) {
-    message.success($t('page.system.common.changeStatusSuccess'));
+    window.$message?.success($t('page.system.common.changeStatusSuccess'));
+
     await getData();
   }
 }
 
-function createButtonEdit(row: Row) {
-  return h(
-    'NButton',
-    {
-      size: 'small',
-      type: 'primary',
-      ghost: true,
-      onClick: () => handleEdit(row.id)
-    },
-    { default: () => $t('common.edit') }
-  );
-}
-
-function createButtonDelete(row: Row) {
-  return h(
-    'NPopconfirm',
-    {
-      onPositiveClick: async () => {
-        const { error } = await userApi.remove(row.id);
-        if (!error) onDeleted();
-      }
-    },
-    {
-      trigger: () =>
-        h(
-          'NButton',
-          {
-            size: 'small',
-            type: 'error',
-            ghost: true
-          },
-          { default: () => $t('common.delete') }
-        ),
-      default: () => $t('common.confirmDelete')
-    }
-  );
-}
-
-function createButtonResetPwd(row: Row) {
-  return h(
-    'NPopconfirm',
-    {
-      onPositiveClick: async () => {
-        const { error } = await userApi.resetPwd(row.id);
-        if (!error) message.success($t('page.system.common.resetPwdSuccess'));
-      }
-    },
-    {
-      trigger: () =>
-        h(
-          'NButton',
-          {
-            size: 'small',
-            type: 'warning',
-            ghost: true
-          },
-          { default: () => $t('page.system.user.action.resetPwd') }
-        ),
-      default: () => $t('page.system.common.resetPwdConfirm')
-    }
-  );
-}
-
-async function onBatchDelete() {
-  if (!checkedRowKeys.value.length) return;
-  dialog.warning({
-    title: $t('common.warning'),
-    content: $t('common.confirmDelete'),
+function handleResetPwd(id: number) {
+  window.$dialog?.warning({
+    title: $t('common.tip'),
+    content: $t('page.system.common.resetPwdConfirm'),
     positiveText: $t('common.confirm'),
     negativeText: $t('common.cancel'),
     onPositiveClick: async () => {
-      const ids = checkedRowKeys.value.map(Number);
-      const { error } = await userApi.batchDelete(ids);
-      if (!error) onBatchDeleted();
+      const { error } = await userApi.resetPwd(id);
+
+      if (!error) {
+        window.$message?.success($t('page.system.common.resetPwdSuccess'));
+      }
     }
   });
-}
-
-function onSearch() {
-  getDataByPage();
-}
-function onReset() {
-  Object.assign(queryForm, {
-    keyword: '',
-    status: '',
-    deptId: null,
-    beginTime: null,
-    endTime: null,
-    dateRange: null
-  });
-  onSearch();
 }
 </script>
 
 <template>
-  <div class="min-h-full">
-    <NSpace vertical :size="12">
-      <NCard>
-        <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
-          <NFormItem :label="$t('common.keywordSearch')">
-            <NInput
-              v-model:value="queryForm.keyword"
-              clearable
-              :placeholder="$t('common.keywordSearch')"
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.status')">
-            <NSelect
-              v-model:value="queryForm.status"
-              :options="[
-                { label: $t('page.system.common.enabled'), value: '1' },
-                { label: $t('page.system.common.disabled'), value: '0' }
-              ]"
-              clearable
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.dept')">
-            <NTreeSelect
-              v-model:value="queryForm.deptId"
-              :options="deptOptions"
-              key-field="id"
-              label-field="name"
-              children-field="children"
-              clearable
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.common.dateRange')">
-            <NDatePicker
-              v-model:formatted-value="queryForm.dateRange"
-              type="daterange"
-              value-format="yyyy-MM-dd"
-              clearable
-            />
-          </NFormItem>
-          <NFormItem>
-            <NSpace>
-              <NButton type="primary" @click="onSearch">
-                <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-              </NButton>
-              <NButton @click="onReset">
-                <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-              </NButton>
-            </NSpace>
-          </NFormItem>
-        </NForm>
-      </NCard>
-
-      <NCard :bordered="false" class="!mt-0">
+  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
+    <UserSearch v-model:model="searchParams" @search="getDataByPage" />
+    <NCard :title="$t('page.system.user.title')" :bordered="false" size="small" class="card-wrapper sm:flex-1-hidden">
+      <template #header-extra>
         <TableHeaderOperation
           v-model:columns="columnChecks"
+          :disabled-delete="checkedRowKeys.length === 0"
           :loading="loading"
-          :disabled-delete="!checkedRowKeys.length"
           @add="handleAdd"
-          @delete="onBatchDelete"
+          @delete="handleBatchDelete"
           @refresh="getData"
         />
-
-        <NDataTable
-          v-model:checked-row-keys="checkedRowKeys"
-          :columns="columns"
-          :data="data"
-          :loading="loading"
-          :pagination="mobilePagination"
-          :scroll-x="1700"
-          :bordered="false"
-          striped
-        />
-      </NCard>
-    </NSpace>
-
-    <NDrawer v-model:show="drawerVisible" :width="640" placement="right" :mask-closable="false">
-      <NDrawerContent
-        :title="operateType === 'add' ? $t('common.add') : $t('common.edit')"
-        :closable="true"
-      >
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-          <NButton size="small" @click="closeDrawer">{{ $t('common.close') }}</NButton>
-        </div>
-        <NForm ref="drawerFormRef" label-placement="top" :model="drawerForm" :rules="drawerRules">
-          <NFormItem :label="$t('page.system.user.form.username')" path="username">
-            <NInput v-model:value="drawerForm.username" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.nickname')" path="nickname">
-            <NInput v-model:value="drawerForm.nickname" />
-          </NFormItem>
-          <NFormItem
-            v-if="operateType === 'add'"
-            :label="$t('page.system.user.form.password')"
-            path="password"
-          >
-            <NInput v-model:value="drawerForm.password" type="password" show-password-on="click" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.email')" path="email">
-            <NInput v-model:value="drawerForm.email" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.phone')" path="phone">
-            <NInput v-model:value="drawerForm.phone" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.gender')" path="gender">
-            <NRadioGroup v-model:value="drawerForm.gender">
-              <NRadio value="0">{{ $t('page.system.common.gender.unknown') }}</NRadio>
-              <NRadio value="1">{{ $t('page.system.common.gender.male') }}</NRadio>
-              <NRadio value="2">{{ $t('page.system.common.gender.female') }}</NRadio>
-            </NRadioGroup>
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.dept')" path="department_id">
-            <NTreeSelect
-              v-model:value="drawerForm.department_id"
-              :options="deptOptions"
-              key-field="id"
-              label-field="name"
-              children-field="children"
-              clearable
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.roles')" path="roleIds">
-            <NSelect
-              v-model:value="drawerForm.roleIds"
-              multiple
-              :options="roleOptions.map(r => ({ label: r.name, value: r.id }))"
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.posts')" path="postIds">
-            <NSelect
-              v-model:value="drawerForm.postIds"
-              multiple
-              :options="postOptions.map(p => ({ label: p.name, value: p.id }))"
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.status')" path="status">
-            <NRadioGroup v-model:value="drawerForm.status">
-              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
-              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
-            </NRadioGroup>
-          </NFormItem>
-          <NFormItem :label="$t('page.system.user.form.remark')" path="remark">
-            <NInput v-model:value="drawerForm.remark" type="textarea" :rows="3" />
-          </NFormItem>
-        </NForm>
-        <template #footer>
-          <NSpace justify="end">
-            <NButton @click="closeDrawer">{{ $t('common.cancel') }}</NButton>
-            <NButton type="primary" :loading="loading" @click="onSubmit">{{ $t('common.confirm') }}</NButton>
-          </NSpace>
-        </template>
-      </NDrawerContent>
-    </NDrawer>
+      </template>
+      <NDataTable
+        v-model:checked-row-keys="checkedRowKeys"
+        :columns="columns"
+        :data="data"
+        size="small"
+        :flex-height="!appStore.isMobile"
+        :loading="loading"
+        remote
+        :row-key="row => row.id"
+        :pagination="mobilePagination"
+        :scroll-x="1412"
+        class="sm:h-full"
+      />
+      <UserOperateDrawer
+        v-model:visible="drawerVisible"
+        :operate-type="operateType"
+        :row-data="editingData"
+        @submitted="getDataByPage"
+      />
+    </NCard>
   </div>
 </template>

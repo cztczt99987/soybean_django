@@ -322,6 +322,8 @@ declare namespace App {
         action: string;
         add: string;
         addSuccess: string;
+        addChildMenu: string;
+        addChildDept: string;
         backToHome: string;
         batchDelete: string;
         cancel: string;

@@ -10,6 +10,8 @@ const local: App.I18n.Schema = {
     action: 'Action',
     add: 'Add',
     addSuccess: 'Add Success',
+    addChildMenu: 'Add Child Menu',
+    addChildDept: 'Add Child Dept',
     backToHome: 'Back to home',
     batchDelete: 'Batch Delete',
     cancel: 'Cancel',

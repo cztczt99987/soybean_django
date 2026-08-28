@@ -74,7 +74,7 @@ type UseNaivePaginatedTableOptions<ResponseData, ApiData> = UseNaiveTableOptions
    * @default true
    */
   showTotal?: boolean;
-  onPaginationParamsChange?: (params: PaginationParams) => void | Promise<void>;
+  onPaginationParamsChange?: (params: Required<PaginationParams>) => void | Promise<void>;
 };
 
 export function useNaivePaginatedTable<ResponseData, ApiData>(
@@ -115,12 +115,12 @@ export function useNaivePaginatedTable<ResponseData, ApiData>(
     return p;
   });
 
-  const paginationParams = computed(() => {
+  const paginationParams = computed<Required<PaginationParams>>(() => {
     const { page, pageSize } = pagination;
 
     return {
-      page,
-      pageSize
+      page: page ?? 1,
+      pageSize: pageSize ?? 10
     };
   });
 
