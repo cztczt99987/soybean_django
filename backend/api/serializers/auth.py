@@ -1,33 +1,14 @@
-"""系统管理 Serializers。"""
+"""鉴权模块 Serializers。
+
+部门 / 岗位 / 角色 / 菜单 / 用户
+"""
 
 from __future__ import annotations
 
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import (
-    Config,
-    Department,
-    DictData,
-    DictType,
-    Menu,
-    OperationLog,
-    Post,
-    Role,
-    User,
-)
-
-
-class IdNameSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    name = serializers.CharField()
-
-
-class PaginationMixin:
-    """分页入参（query params）。"""
-
-    current = serializers.IntegerField(min_value=1, default=1)
-    size = serializers.IntegerField(min_value=1, default=10)
+from ..models import Department, Menu, Post, Role, User
 
 
 # ============ 部门 ============
@@ -47,7 +28,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 class DepartmentFlatSerializer(serializers.ModelSerializer):
-    """列表场景：不嵌套 children，返回 departmentId 等字段给前端选择器用。"""
+    """列表场景：不嵌套 children，返回 departmentId / parentId 字段。"""
 
     departmentId = serializers.IntegerField(source="id", read_only=True)  # noqa: N815
     parentId = serializers.IntegerField(source="parent_id", allow_null=True, required=False)  # noqa: N815
@@ -219,63 +200,3 @@ class UserSerializer(serializers.ModelSerializer):
         if post_ids is not None:
             user.posts.set(post_ids)
         return user
-
-
-# ============ 字典类型 + 明细 ============
-
-
-class DictTypeSerializer(serializers.ModelSerializer):
-    dictId = serializers.IntegerField(source="id", read_only=True)  # noqa: N815
-    items = serializers.SerializerMethodField(required=False)
-
-    class Meta:
-        model = DictType
-        exclude = ("is_deleted",)
-
-    def get_items(self, obj: DictType):
-        return DictDataSerializer(obj.items.filter(is_deleted=False), many=True).data
-
-
-class DictDataSerializer(serializers.ModelSerializer):
-    dictCode = serializers.CharField(source="dict_type.code", read_only=True)  # noqa: N815
-    dictCodeInput = serializers.CharField(write_only=True, required=False, allow_blank=True)  # noqa: N815
-
-    class Meta:
-        model = DictData
-        exclude = ("is_deleted", "dict_type")
-        extra_kwargs = {"dict_type": {"required": False}}
-
-    def validate(self, attrs):
-        code = attrs.pop("dictCodeInput", None)
-        if self.instance:
-            return attrs
-        if not code and "dict_type" not in attrs:
-            raise serializers.ValidationError("必须指定字典类型编码 dictCodeInput")
-        if code:
-            try:
-                attrs["dict_type"] = DictType.objects.get(code=code, is_deleted=False)
-            except DictType.DoesNotExist as exc:
-                raise serializers.ValidationError(f"字典类型 {code} 不存在") from exc
-        return attrs
-
-
-# ============ 参数设置 ============
-
-
-class ConfigSerializer(serializers.ModelSerializer):
-    configId = serializers.IntegerField(source="id", read_only=True)  # noqa: N815
-
-    class Meta:
-        model = Config
-        exclude = ("is_deleted",)
-
-
-# ============ 操作日志 ============
-
-
-class OperationLogSerializer(serializers.ModelSerializer):
-    logId = serializers.IntegerField(source="id", read_only=True)  # noqa: N815
-
-    class Meta:
-        model = OperationLog
-        fields = "__all__"
