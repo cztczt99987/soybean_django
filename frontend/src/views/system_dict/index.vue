@@ -504,6 +504,7 @@ function handleDataAdd() {
 </script>
 
 <template>
+  <div class="min-h-full">
   <NSpace vertical :size="12">
     <NTabs v-model:value="activeTab" type="line" animated>
       <NTabPane name="type" tab="字典类型">
@@ -721,4 +722,5 @@ function handleDataAdd() {
       </template>
     </NDrawerContent>
   </NDrawer>
+  </div>
 </template>

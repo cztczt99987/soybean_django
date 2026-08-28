@@ -228,6 +228,7 @@ function onReset() {
 </script>
 
 <template>
+  <div class="min-h-full">
   <NSpace vertical :size="12">
     <NCard>
       <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
@@ -320,4 +321,5 @@ function onReset() {
       </template>
     </NDrawerContent>
   </NDrawer>
+  </div>
 </template>
