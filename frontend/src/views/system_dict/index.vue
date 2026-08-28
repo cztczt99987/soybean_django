@@ -47,9 +47,12 @@ const typeDrawerRules = computed<FormRules>(() => ({
   status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
 }));
 
-const typeTbl: any = useNaivePaginatedTable({
+let typeTbl: any;
+typeTbl = useNaivePaginatedTable({
   api: () => {
-    const params: any = { current: typeTbl.pagination.page, size: typeTbl.pagination.pageSize };
+    const page = typeTbl?.pagination?.page ?? 1;
+    const pageSize = typeTbl?.pagination?.pageSize ?? 10;
+    const params: any = { current: page, size: pageSize };
     Object.entries(typeQueryForm).forEach(([k, v]) => {
       if (v !== '' && v !== null && v !== undefined) params[k] = v;
     });
@@ -63,7 +66,7 @@ const typeTbl: any = useNaivePaginatedTable({
       width: 64,
       render: (...args: any[]): any => {
         const index = args.length >= 3 ? args[2] : args[1];
-        return (typeTbl.pagination.page - 1) * typeTbl.pagination.pageSize + index + 1;
+        return ((typeTbl?.pagination?.page ?? 1) - 1) * (typeTbl?.pagination?.pageSize ?? 10) + index + 1;
       }
     },
     { title: 'ID', key: 'id', width: 80 },
@@ -276,9 +279,12 @@ const dataDrawerRules = computed<FormRules>(() => ({
   status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
 }));
 
-const dataTbl: any = useNaivePaginatedTable({
+let dataTbl: any;
+dataTbl = useNaivePaginatedTable({
   api: () => {
-    const params: any = { current: dataTbl.pagination.page, size: dataTbl.pagination.pageSize };
+    const page = dataTbl?.pagination?.page ?? 1;
+    const pageSize = dataTbl?.pagination?.pageSize ?? 10;
+    const params: any = { current: page, size: pageSize };
     Object.entries(dataQueryForm).forEach(([k, v]) => {
       if (v !== '' && v !== null && v !== undefined) params[k] = v;
     });
@@ -296,7 +302,7 @@ const dataTbl: any = useNaivePaginatedTable({
       width: 64,
       render: (...args: any[]): any => {
         const index = args.length >= 3 ? args[2] : args[1];
-        return (dataTbl.pagination.page - 1) * dataTbl.pagination.pageSize + index + 1;
+        return ((dataTbl?.pagination?.page ?? 1) - 1) * (dataTbl?.pagination?.pageSize ?? 10) + index + 1;
       }
     },
     { title: 'ID', key: 'id', width: 80 },

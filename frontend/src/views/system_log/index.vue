@@ -40,9 +40,12 @@ const operationTypeOptions = [
   { label: '其他', value: '9' }
 ];
 
-const tbl: any = useNaivePaginatedTable({
+let tbl: any;
+tbl = useNaivePaginatedTable({
   api: () => {
-    const params: any = { current: tbl.pagination.page, size: tbl.pagination.pageSize };
+    const page = tbl?.pagination?.page ?? 1;
+    const pageSize = tbl?.pagination?.pageSize ?? 10;
+    const params: any = { current: page, size: pageSize };
     Object.entries(queryForm).forEach(([k, v]) => {
       if (k === 'dateRange') return;
       if (v !== '' && v !== null && v !== undefined) params[k] = v;
@@ -61,7 +64,7 @@ const tbl: any = useNaivePaginatedTable({
       width: 64,
       render: (...args: any[]): any => {
         const index = args.length >= 3 ? args[2] : args[1];
-        return (tbl.pagination.page - 1) * tbl.pagination.pageSize + index + 1;
+        return ((tbl?.pagination?.page ?? 1) - 1) * (tbl?.pagination?.pageSize ?? 10) + index + 1;
       }
     },
     { title: $t('page.system.log.fields.username'), key: 'username', width: 120 },
