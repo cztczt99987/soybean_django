@@ -12,8 +12,9 @@ from .common import APIView, ok, require_auth
 
 
 def _menu_to_route(menu: Menu) -> dict:
+    # 一级目录默认布局容器; 叶子菜单按视图目录名映射 (src/views/<name>/index.vue)
     component = menu.component or (
-        "layout.base$view.system" if menu.menu_type == "1" else ""
+        "layout.base" if menu.menu_type == "1" else f"view.{menu.name}"
     )
     meta = {
         "title": menu.title or menu.name,

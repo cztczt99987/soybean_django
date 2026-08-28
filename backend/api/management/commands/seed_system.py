@@ -139,25 +139,27 @@ class Command(BaseCommand):
 
     def _seed_menus(self):
         # 一级目录：系统管理
+        # 一级目录: component 必须是 "layout.base"（前端 transform 只认该写法作为布局容器）
         system = self._menu(
             "system",
             "系统管理",
             menu_type="1",
             order=10,
             path="/system",
-            component="layout.base$view.system",
-            icon="mdi:cog-outline",
+            component="layout.base",
+            icon="mdi:cog",
             i18n_key="route.system",
         )
+        # 叶子菜单: component 必须是 "view.<路由名>"（对应 src/views/<路由名>/index.vue）
         children = [
-            ("system_user", "用户管理", "/system/user", "layout.base$view.system_user", "mdi:account-group-outline", 1, "system:user:view"),
-            ("system_role", "角色管理", "/system/role", "layout.base$view.system_role", "mdi:shield-account-outline", 2, "system:role:view"),
-            ("system_menu", "菜单管理", "/system/menu", "layout.base$view.system_menu", "mdi:menu-open", 3, "system:menu:view"),
-            ("system_dept", "部门管理", "/system/dept", "layout.base$view.system_dept", "mdi:office-building-outline", 4, "system:dept:view"),
-            ("system_post", "岗位管理", "/system/post", "layout.base$view.system_post", "mdi:badge-account-outline", 5, "system:post:view"),
-            ("system_dict", "字典管理", "/system/dict", "layout.base$view.system_dict", "mdi:book-open-page-variant-outline", 6, "system:dict:view"),
-            ("system_config", "参数设置", "/system/config", "layout.base$view.system_config", "mdi:tune-variant", 7, "system:config:view"),
-            ("system_log", "日志管理", "/system/log", "layout.base$view.system_log", "mdi:file-document-multiple-outline", 8, "system:log:view"),
+            ("system_user", "用户管理", "/system/user", "view.system_user", "mdi:account-group", 1, "system:user:view"),
+            ("system_role", "角色管理", "/system/role", "view.system_role", "mdi:shield-account", 2, "system:role:view"),
+            ("system_menu", "菜单管理", "/system/menu", "view.system_menu", "mdi:menu", 3, "system:menu:view"),
+            ("system_dept", "部门管理", "/system/dept", "view.system_dept", "mdi:office-building-marker", 4, "system:dept:view"),
+            ("system_post", "岗位管理", "/system/post", "view.system_post", "mdi:account-tie", 5, "system:post:view"),
+            ("system_dict", "字典管理", "/system/dict", "view.system_dict", "mdi:book-open-variant", 6, "system:dict:view"),
+            ("system_config", "参数设置", "/system/config", "view.system_config", "mdi:tune-vertical", 7, "system:config:view"),
+            ("system_log", "日志管理", "/system/log", "view.system_log", "mdi:text-box-multiple-outline", 8, "system:log:view"),
         ]
         for n, title, path, comp, icon, order, perm in children:
             menu = self._menu(
