@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { NButton, NPopconfirm, NTag } from 'naive-ui';
 import type { PaginationProps } from 'naive-ui';
 import { cacheApi } from '@/service/api';
@@ -36,12 +36,38 @@ const serverInfo = ref<Api.Monitor.CacheListResp['serverInfo']>({});
 const pagination = reactive<PaginationProps>({
   page: 1,
   pageSize: 10,
+  itemCount: 0,
   showSizePicker: true,
   pageSizes: [10, 20, 50, 100],
-  prefix: info => $t('datatable.itemCount', { total: info.itemCount ?? 0 })
+  prefix: info => $t('datatable.itemCount', { total: info.itemCount ?? 0 }),
+  onChange: (page: number) => {
+    pagination.page = page;
+  },
+  onUpdatePageSize: (size: number) => {
+    pagination.pageSize = size;
+    pagination.page = 1;
+  }
 });
 
 const isRedis = computed(() => mode.value === 'redis');
+
+/** 本地分页：records 全量返回，按页切片 */
+const pagedRecords = computed(() => {
+  const page = pagination.page ?? 1;
+  const size = pagination.pageSize ?? 10;
+  const start = (page - 1) * size;
+  return records.value.slice(start, start + size);
+});
+
+// 数据到位后同步分页总数；翻页超出范围时回到第 1 页
+watch(records, () => {
+  pagination.itemCount = records.value.length;
+  const page = pagination.page ?? 1;
+  const size = pagination.pageSize ?? 10;
+  if (page > 1 && (page - 1) * size >= records.value.length) {
+    pagination.page = 1;
+  }
+});
 
 async function getData() {
   loading.value = true;
@@ -250,9 +276,8 @@ getData();
         </template>
         <NDataTable
           v-model:checked-row-keys="checkedRowKeys"
-          v-model:page="pagination.page"
           :columns="columns"
-          :data="records"
+          :data="pagedRecords"
           size="small"
           :flex-height="true"
           :loading="loading"
