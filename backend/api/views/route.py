@@ -54,29 +54,31 @@ def _menu_to_tree_nodes(menus, parent_id=None):
 
 class ConstantRoutesView(APIView):
     def get(self, request):
+        # component 必须匹配前端 views 映射键（login/403/404/500），
+        # path 必须与前端 routeMap 一致，否则 transform 会丢弃路由导致跳转失败
         constants = [
             {
                 "name": "login",
-                "path": "/login/:module?",
-                "component": "view._builtin.login.index",
+                "path": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
+                "component": "view.login",
                 "meta": {"title": "login", "i18nKey": "route.login", "constant": True},
             },
             {
                 "name": "403",
-                "path": "/error/403",
-                "component": "view._builtin.403.index",
+                "path": "/403",
+                "component": "view.403",
                 "meta": {"title": "403", "constant": True},
             },
             {
                 "name": "404",
-                "path": "/error/404",
-                "component": "view._builtin.404.index",
+                "path": "/404",
+                "component": "view.404",
                 "meta": {"title": "404", "constant": True},
             },
             {
                 "name": "500",
-                "path": "/error/500",
-                "component": "view._builtin.500.index",
+                "path": "/500",
+                "component": "view.500",
                 "meta": {"title": "500", "constant": True},
             },
         ]
