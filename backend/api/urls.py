@@ -23,6 +23,13 @@ urlpatterns = [
     path("route/getConstantRoutes", views.ConstantRoutesView.as_view(), name="constant-routes"),
     path("route/getUserRoutes", views.UserRoutesView.as_view(), name="user-routes"),
     path("route/isRouteExist", views.IsRouteExistView.as_view(), name="route-exist"),
+    # 监控管理
+    path("monitor/server", views.ServerInfoView.as_view(), name="monitor-server"),
+    path("monitor/cache", views.CacheListView.as_view(), name="monitor-cache"),
+    path("monitor/cache/delete", views.CacheDeleteView.as_view(), name="monitor-cache-delete"),
+    path("monitor/files", views.FileListView.as_view(), name="monitor-files"),
+    path("monitor/file/download", views.FileDownloadView.as_view(), name="monitor-file-download"),
+    path("monitor/storage", views.StorageConfigView.as_view(), name="monitor-storage"),
     # 兼容旧 URL (前端老代码仍有可能引用)
     path("auth/user-info", views.UserInfoView.as_view(), name="user-info-compat"),
     path("route/routes", views.UserRoutesView.as_view(), name="routes-compat"),

@@ -23,6 +23,14 @@ from .common import (
     require_auth,
 )
 from .route import ConstantRoutesView, IsRouteExistView, UserRoutesView
+from .monitor import (
+    CacheDeleteView,
+    CacheListView,
+    FileDownloadView,
+    FileListView,
+    ServerInfoView,
+    StorageConfigView,
+)
 from .system import (
     ConfigViewSet,
     DepartmentViewSet,

@@ -76,6 +76,44 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'monitor',
+    path: '/monitor',
+    component: 'layout.base',
+    meta: {
+      title: 'monitor',
+      i18nKey: 'route.monitor'
+    },
+    children: [
+      {
+        name: 'monitor_cache',
+        path: '/monitor/cache',
+        component: 'view.monitor_cache',
+        meta: {
+          title: 'monitor_cache',
+          i18nKey: 'route.monitor_cache'
+        }
+      },
+      {
+        name: 'monitor_file',
+        path: '/monitor/file',
+        component: 'view.monitor_file',
+        meta: {
+          title: 'monitor_file',
+          i18nKey: 'route.monitor_file'
+        }
+      },
+      {
+        name: 'monitor_server',
+        path: '/monitor/server',
+        component: 'view.monitor_server',
+        meta: {
+          title: 'monitor_server',
+          i18nKey: 'route.monitor_server'
+        }
+      }
+    ]
+  },
+  {
     name: 'system',
     path: '/system',
     component: 'layout.base',

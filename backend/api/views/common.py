@@ -15,6 +15,7 @@ import secrets
 import time
 from functools import wraps
 
+from django.core.cache import cache
 from django.db import models as db_models
 from django.db.models import Q
 from django.http import HttpRequest
@@ -77,6 +78,38 @@ def get_client_ip(request: HttpRequest) -> str:
     if xff:
         return xff.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
+
+
+# ===================== 用户动态路由缓存 =====================
+# 缓存 UserRoutesView 结果（settings 中已按 REDIS_URL 配置 Redis，未配置则退化为本地内存）。
+# key 中带全局版本号：菜单/角色变更时版本 +1 即全体失效；用户自身角色变更则按用户删 key。
+
+_ROUTES_VER_KEY = "menu_routes:ver"
+_ROUTES_TTL = 300
+
+
+def _routes_version() -> int:
+    v = cache.get(_ROUTES_VER_KEY)
+    if v is None:
+        cache.set(_ROUTES_VER_KEY, 1, None)
+        return 1
+    return v
+
+
+def bump_routes_version():
+    """菜单或角色-菜单关联变更后调用，使所有用户的动态路由缓存失效。"""
+    try:
+        cache.incr(_ROUTES_VER_KEY)
+    except ValueError:
+        cache.set(_ROUTES_VER_KEY, 2, None)
+
+
+def user_routes_cache_key(user_id: int) -> str:
+    return f"menu_routes:user:{user_id}:v{_routes_version()}"
+
+
+def invalidate_user_routes(user_id: int):
+    cache.delete(user_routes_cache_key(user_id))
 
 
 # ===================== 极简 Token 认证 =====================
@@ -206,6 +239,9 @@ class _CRUDMixin:
 
     filter_map: dict[str, str] = {}
 
+    def _after_mutation(self, instance=None):
+        """数据变更后的钩子，子类按需覆写（如失效缓存）。"""
+
     def _base_qs(self):
         if hasattr(self.model, "_meta") and "is_deleted" in {f.name for f in self.model._meta.get_fields()}:
             return self.model.objects.filter(is_deleted=False)
@@ -252,6 +288,7 @@ class _CRUDMixin:
         ser = self.serializer_class(data=request.data)
         ser.is_valid(raise_exception=True)
         instance = ser.save()
+        self._after_mutation(instance)
         _log_operation(request, self.module_name or self.model.__name__, f"新增: {instance}", op_type="2")
         return Response(ok(ser.data))
 
@@ -260,6 +297,7 @@ class _CRUDMixin:
         ser = self.serializer_class(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         instance = ser.save()
+        self._after_mutation(instance)
         _log_operation(request, self.module_name or self.model.__name__, f"修改: {instance}", op_type="3")
         return Response(ok(ser.data))
 
@@ -270,6 +308,7 @@ class _CRUDMixin:
             obj.save(update_fields=["is_deleted"])
         else:
             obj.delete()
+        self._after_mutation(obj)
         _log_operation(request, self.module_name or self.model.__name__, f"删除: {obj}", op_type="4")
         return Response(ok(True))
 
@@ -279,10 +318,13 @@ class _CRUDMixin:
         if not ids:
             return Response(fail("请指定要删除的记录 ID 列表"))
         qs = self._base_qs().filter(id__in=list(ids))
+        objs = list(qs)
         if hasattr(self.model, "is_deleted"):
             qs.update(is_deleted=True)
         else:
             qs.delete()
+        for obj in objs:
+            self._after_mutation(obj)
         _log_operation(
             request, self.module_name or self.model.__name__, f"批量删除, 数量={len(ids)}", op_type="4"
         )

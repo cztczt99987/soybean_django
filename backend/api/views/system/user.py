@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from ...models import User
 from ...serializers import UserSerializer
-from ..common import AuthenticatedViewSet, _CRUDMixin, _log_operation, fail, ok
+from ..common import AuthenticatedViewSet, _CRUDMixin, _log_operation, fail, invalidate_user_routes, ok
 
 
 class UserViewSet(_CRUDMixin, AuthenticatedViewSet):
@@ -22,6 +22,11 @@ class UserViewSet(_CRUDMixin, AuthenticatedViewSet):
         "deptId": "department_id",
         "department": "department_id",
     }
+
+    def _after_mutation(self, instance=None):
+        # 用户角色可能被修改，按用户失效其动态路由缓存
+        if instance is not None:
+            invalidate_user_routes(instance.id)
 
     @action(detail=True, methods=["post"], url_path="reset-pwd")
     def reset_pwd(self, request, pk=None):

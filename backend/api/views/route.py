@@ -5,17 +5,27 @@ constantRoutes（内置路由）/ userRoutes（按当前角色动态菜单）/ i
 
 from __future__ import annotations
 
+from django.core.cache import cache
 from rest_framework.response import Response
 
 from ..models import Menu, User
-from .common import APIView, ok, require_auth
+from .common import (
+    APIView,
+    _ROUTES_TTL,
+    ok,
+    require_auth,
+    user_routes_cache_key,
+)
 
 
 def _menu_to_route(menu: Menu) -> dict:
-    # 一级目录默认布局容器; 叶子菜单按视图目录名映射 (src/views/<name>/index.vue)
-    component = menu.component or (
-        "layout.base" if menu.menu_type == "1" else f"view.{menu.name}"
-    )
+    # 一级目录默认布局容器; 二级目录透明分组(无 component); 叶子菜单按视图目录名映射
+    if menu.component:
+        component = menu.component
+    elif menu.menu_type == "1":
+        component = "layout.base" if menu.parent_id is None else ""
+    else:
+        component = f"view.{menu.name}"
     meta = {
         "title": menu.title or menu.name,
         "icon": menu.icon or "",
@@ -90,6 +100,14 @@ class UserRoutesView(APIView):
     @require_auth
     def get(self, request):
         u: User = request.sys_user
+        key = user_routes_cache_key(u.id)
+        payload = cache.get(key)
+        if payload is None:
+            payload = self._build_routes(u)
+            cache.set(key, payload, _ROUTES_TTL)
+        return Response(ok(payload))
+
+    def _build_routes(self, u: User) -> dict:
         role_ids = list(u.roles.values_list("id", flat=True))
         is_super = any(code == "R_SUPER" for code in u.roles.values_list("code", flat=True))
 
@@ -134,7 +152,7 @@ class UserRoutesView(APIView):
             },
             *_menu_to_tree_nodes(menus),
         ]
-        return Response(ok({"routes": routes, "home": "home"}))
+        return {"routes": routes, "home": "home"}
 
 
 class IsRouteExistView(APIView):

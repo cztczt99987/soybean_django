@@ -8,9 +8,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from django.db import models
+from django.utils import timezone
 
 from .auth import User
 from .base import BaseModel
@@ -127,7 +126,7 @@ class OperationLog(BaseModel):
     )
     cost_time = models.IntegerField(default=0, verbose_name="耗时(ms)")
     error_msg = models.TextField(blank=True, default="", verbose_name="错误消息")
-    operated_at = models.DateTimeField(default=datetime.now, verbose_name="操作时间")
+    operated_at = models.DateTimeField(default=timezone.now, verbose_name="操作时间")
 
     class Meta:
         verbose_name = "操作日志"

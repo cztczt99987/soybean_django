@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from ...models import Menu
 from ...serializers import MenuFlatSerializer
-from ..common import AuthenticatedViewSet, _CRUDMixin, ok
+from ..common import AuthenticatedViewSet, _CRUDMixin, bump_routes_version, ok
 
 
 class MenuViewSet(_CRUDMixin, AuthenticatedViewSet):
@@ -16,6 +16,9 @@ class MenuViewSet(_CRUDMixin, AuthenticatedViewSet):
     list_serializer_class = MenuFlatSerializer
     module_name = "菜单管理"
     filter_map = {"name": "name__icontains", "status": "status", "menuType": "menu_type"}
+
+    def _after_mutation(self, instance=None):
+        bump_routes_version()
 
     @action(detail=False, methods=["get"], url_path="tree")
     def tree(self, request):

@@ -31,7 +31,7 @@ class Command(BaseCommand):
             self._bind_roles_menus()
         except Exception as exc:  # noqa: BLE001
             raise CommandError(f"初始化失败: {exc}") from exc
-        self.stdout.write(self.style.SUCCESS("系统管理种子数据初始化完成 ✅"))
+        self.stdout.write(self.style.SUCCESS("系统管理种子数据初始化完成"))
 
     # -------------------- 辅助 --------------------
     @staticmethod
@@ -189,6 +189,75 @@ class Command(BaseCommand):
                         "title": m_title,
                         "permission": p,
                         "order": o,
+                        "parent": menu,
+                        "menu_type": "3",
+                        "hide_in_menu": True,
+                    },
+                )
+
+        # 顶级目录：监控管理（与系统管理平级；前端路由仅支持两级目录结构）
+        monitor = self._menu(
+            "monitor",
+            "监控管理",
+            menu_type="1",
+            order=11,
+            path="/monitor",
+            component="layout.base",
+            icon="mdi:monitor-dashboard",
+            i18n_key="route.monitor",
+        )
+        monitor_children = [
+            (
+                "monitor_server",
+                "服务器信息",
+                "/monitor/server",
+                "view.monitor_server",
+                "mdi:server-network",
+                1,
+                [("monitor_server:refresh", "刷新")],
+            ),
+            (
+                "monitor_cache",
+                "缓存监控",
+                "/monitor/cache",
+                "view.monitor_cache",
+                "mdi:database-import-outline",
+                2,
+                [("monitor_cache:delete", "删除缓存"), ("monitor_cache:clean", "清空缓存")],
+            ),
+            (
+                "monitor_file",
+                "文件管理",
+                "/monitor/file",
+                "view.monitor_file",
+                "mdi:folder-multiple-outline",
+                3,
+                [
+                    ("monitor_file:download", "下载文件"),
+                    ("monitor_storage:save", "保存存储配置"),
+                    ("monitor_storage:switch", "切换存储方式"),
+                ],
+            ),
+        ]
+        for n, title, path, comp, icon, order, buttons in monitor_children:
+            menu = self._menu(
+                n,
+                title,
+                parent=monitor,
+                path=path,
+                component=comp,
+                icon=icon,
+                order=order,
+                menu_type="2",
+                i18n_key=f"route.{n}",
+            )
+            for idx, (btn_name, btn_title) in enumerate(buttons, start=1):
+                Menu.objects.update_or_create(
+                    name=btn_name,
+                    defaults={
+                        "title": btn_title,
+                        "permission": btn_name.replace(":", ":"),
+                        "order": idx,
                         "parent": menu,
                         "menu_type": "3",
                         "hide_in_menu": True,
