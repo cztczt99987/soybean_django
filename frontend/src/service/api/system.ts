@@ -161,7 +161,7 @@ export const configApi = {
 /** ========== 操作日志 ========== */
 
 export const logApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.LogSearchParams) =>
     list<Api.System.ListResp<Api.System.OperationLog>>('/system/log/', params),
   remove: (id: number) => remove('/system/log/', id),
   batchDelete: (ids: number[]) => batchDelete('/system/log/', ids),

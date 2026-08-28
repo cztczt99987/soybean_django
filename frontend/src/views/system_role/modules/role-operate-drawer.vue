@@ -134,28 +134,47 @@ watch(visible, () => {
           />
         </NFormItem>
         <NFormItem :label="$t('page.system.role.form.menus')" path="menuIds">
-          <NTreeSelect
-            v-model:value="model.menuIds"
-            :options="menuTreeOptions"
-            key-field="id"
-            label-field="title"
-            multiple
-            checkable
-            cascade
-            clearable
-          />
+          <div class="max-h-240px w-full overflow-auto border border-gray-200 rounded-4px p-8px dark:border-gray-700">
+            <NTree
+              :data="menuTreeOptions"
+              key-field="id"
+              label-field="title"
+              children-field="children"
+              checkable
+              cascade
+              block-line
+              default-expand-all
+              :selectable="false"
+              :checked-keys="model.menuIds"
+              @update:checked-keys="
+                keys => {
+                  model.menuIds = keys.map(Number);
+                }
+              "
+            />
+          </div>
         </NFormItem>
         <NFormItem :label="$t('page.system.role.form.departments')" path="departmentIds">
-          <NTreeSelect
-            v-model:value="model.departmentIds"
-            :options="deptTreeOptions"
-            key-field="id"
-            label-field="name"
-            multiple
-            checkable
-            cascade
-            clearable
-          />
+          <div class="max-h-240px w-full overflow-auto border border-gray-200 rounded-4px p-8px dark:border-gray-700">
+            <NTree
+              ref="deptTreeRef"
+              :data="deptTreeOptions"
+              key-field="id"
+              label-field="name"
+              children-field="children"
+              checkable
+              cascade
+              block-line
+              default-expand-all
+              :selectable="false"
+              :checked-keys="model.departmentIds"
+              @update:checked-keys="
+                keys => {
+                  model.departmentIds = keys.map(Number);
+                }
+              "
+            />
+          </div>
         </NFormItem>
         <NFormItem :label="$t('page.system.role.form.status')" path="status">
           <NRadioGroup v-model:value="model.status">

@@ -684,7 +684,7 @@ declare namespace App {
               operatedAt: string;
               dateRange: string;
             };
-            action: { clean: string; cleanTitle: string; cleanDays: string };
+            action: { clean: string; cleanTitle: string; cleanDays: string; day: string };
           };
           /** 8 个页面共享的通用文案 */
           common: {

@@ -353,7 +353,7 @@ const local: App.I18n.Schema = {
       log: {
         title: '日志管理',
         fields: { username: '账号', module: '模块', description: '描述', operationType: '操作类型', method: '方法', url: 'URL', ip: 'IP', status: '状态', costTime: '耗时', operatedAt: '操作时间', dateRange: '时间范围' },
-        action: { clean: '清理N天前', cleanTitle: '清理日志', cleanDays: '清理多少天前的日志' }
+        action: { clean: '清理N天前', cleanTitle: '清理日志', cleanDays: '清理多少天前的日志', day: '天' }
       },
       common: {
         createdAt: '创建时间',

@@ -357,7 +357,7 @@ const local: App.I18n.Schema = {
       log: {
         title: 'Log Management',
         fields: { username: 'Username', module: 'Module', description: 'Description', operationType: 'Operation Type', method: 'Method', url: 'URL', ip: 'IP', status: 'Status', costTime: 'Cost Time', operatedAt: 'Operated At', dateRange: 'Date Range' },
-        action: { clean: 'Clean N Days Ago', cleanTitle: 'Clean Logs', cleanDays: 'Clean logs older than specified days' }
+        action: { clean: 'Clean N Days Ago', cleanTitle: 'Clean Logs', cleanDays: 'Clean logs older than specified days', day: 'Days' }
       },
       common: {
         createdAt: 'Created At',

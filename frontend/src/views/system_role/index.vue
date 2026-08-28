@@ -1,6 +1,7 @@
 <script setup lang="tsx">
 import { ref } from 'vue';
 import { NButton, NPopconfirm, NTag } from 'naive-ui';
+import type { TreeInst } from 'naive-ui';
 import type { DataScope, EnableStatus } from '@/constants/business';
 import { dataScopeRecord, enableStatusRecord } from '@/constants/business';
 import { menuApi, roleApi } from '@/service/api';
@@ -148,8 +149,12 @@ function edit(id: number) {
 
 const assignMenusVisible = ref(false);
 const assignMenusRoleId = ref<number | null>(null);
+const assignMenusRoleName = ref('');
+/** 勾选的菜单 id（含半选父目录，提交前合并） */
 const assignMenuIds = ref<number[]>([]);
+const assignMenuPattern = ref('');
 const menuTreeOptions = ref<Api.System.Menu[]>([]);
+const assignTreeRef = ref<TreeInst | null>(null);
 
 async function getMenuTreeOptions() {
   const { error, data: menus } = await menuApi.tree();
@@ -161,10 +166,16 @@ async function getMenuTreeOptions() {
 
 function handleOpenAssignMenus(row: Api.System.Role) {
   assignMenusRoleId.value = row.id;
+  assignMenusRoleName.value = row.name;
   assignMenuIds.value = row.menus ?? [];
+  assignMenuPattern.value = '';
   assignMenusVisible.value = true;
 
   getMenuTreeOptions();
+}
+
+function handleAssignCheckedKeys(keys: Array<string | number>) {
+  assignMenuIds.value = keys.map(Number);
 }
 
 async function handleSubmitAssignMenus() {
@@ -172,7 +183,12 @@ async function handleSubmitAssignMenus() {
     return;
   }
 
-  const { error } = await roleApi.assignMenus(assignMenusRoleId.value, assignMenuIds.value);
+  // 合并完全勾选 + 半选（父目录），保证菜单树父子链完整
+  const checked = (assignTreeRef.value?.getCheckedData().keys ?? []) as Array<string | number>;
+  const indeterminate = (assignTreeRef.value?.getIndeterminateData().keys ?? []) as Array<string | number>;
+  const menuIds = [...new Set([...assignMenuIds.value, ...checked, ...indeterminate])].map(Number);
+
+  const { error } = await roleApi.assignMenus(assignMenusRoleId.value, menuIds);
 
   if (!error) {
     window.$message?.success($t('page.system.common.assignMenusSuccess'));
@@ -221,19 +237,33 @@ async function handleSubmitAssignMenus() {
     <NModal
       v-model:show="assignMenusVisible"
       preset="card"
-      :title="$t('page.system.role.action.assignMenus')"
-      class="w-480px"
+      :title="`${$t('page.system.role.action.assignMenus')} - ${assignMenusRoleName}`"
+      class="w-520px"
     >
-      <NTreeSelect
-        v-model:value="assignMenuIds"
-        :options="menuTreeOptions"
-        key-field="id"
-        label-field="title"
-        multiple
-        checkable
-        cascade
-        clearable
-      />
+      <div class="flex-col gap-12px">
+        <NInput v-model:value="assignMenuPattern" clearable :placeholder="$t('common.keywordSearch')">
+          <template #prefix>
+            <icon-ic-round-search class="text-icon" />
+          </template>
+        </NInput>
+        <div class="max-h-400px overflow-auto border border-gray-200 rounded-4px p-8px dark:border-gray-700">
+          <NTree
+            ref="assignTreeRef"
+            :data="menuTreeOptions"
+            key-field="id"
+            label-field="title"
+            children-field="children"
+            checkable
+            cascade
+            block-line
+            default-expand-all
+            :selectable="false"
+            :pattern="assignMenuPattern"
+            :checked-keys="assignMenuIds"
+            @update:checked-keys="handleAssignCheckedKeys"
+          />
+        </div>
+      </div>
       <template #footer>
         <NSpace justify="end" :size="16">
           <NButton @click="assignMenusVisible = false">{{ $t('common.cancel') }}</NButton>
