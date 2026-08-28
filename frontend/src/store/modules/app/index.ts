@@ -10,6 +10,7 @@ import { setDayjsLocale } from '@/locales/dayjs';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
 import { useThemeStore } from '../theme';
+import { configApi } from '@/service/api';
 
 export const useAppStore = defineStore(SetupStoreId.App, () => {
   const themeStore = useThemeStore();
@@ -17,6 +18,9 @@ export const useAppStore = defineStore(SetupStoreId.App, () => {
   const tabStore = useTabStore();
   const scope = effectScope();
   const breakpoints = useBreakpoints(breakpointsTailwind);
+
+  /** 系统名称（来自参数设置 sys.system.name，为空时前端各处回退 i18n 标题） */
+  const systemName = ref('');
   const { bool: themeDrawerVisible, setTrue: openThemeDrawer, setFalse: closeThemeDrawer } = useBoolean();
   const { bool: reloadFlag, setBool: setReloadFlag } = useBoolean(true);
   const { bool: fullContent, toggle: toggleFullContent } = useBoolean();
@@ -72,13 +76,26 @@ export const useAppStore = defineStore(SetupStoreId.App, () => {
   function updateDocumentTitleByLocale() {
     const { i18nKey, title } = router.currentRoute.value.meta;
 
-    const documentTitle = i18nKey ? $t(i18nKey) : title;
+    const pageTitle = i18nKey ? $t(i18nKey) : title;
+
+    const documentTitle = systemName.value ? `${pageTitle} - ${systemName.value}` : pageTitle;
 
     useTitle(documentTitle);
   }
 
+  /** Fetch system name from backend config `sys.system.name` */
+  async function initSystemName() {
+    const { data, error } = await configApi.fetchSystemName();
+
+    if (!error && data?.name) {
+      systemName.value = data.name;
+      updateDocumentTitleByLocale();
+    }
+  }
+
   function init() {
     setDayjsLocale(locale.value);
+    initSystemName();
   }
 
   // watch store
@@ -150,6 +167,7 @@ export const useAppStore = defineStore(SetupStoreId.App, () => {
     locale,
     localeOptions,
     changeLocale,
+    systemName,
     themeDrawerVisible,
     openThemeDrawer,
     closeThemeDrawer,
