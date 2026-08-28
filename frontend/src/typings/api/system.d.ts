@@ -105,6 +105,8 @@ declare namespace Api {
       list_class: string;
       is_default: boolean;
       status: '1' | '0';
+      /** 创建时使用（字典类型主键） */
+      dict_type?: number | null;
       /** 创建时使用 */
       dictCodeInput?: string;
     }

@@ -1,732 +1,435 @@
-<script setup lang="ts">
-import { computed, h, reactive, ref, watch } from 'vue';
-import { NTag, useDialog, useMessage, type FormInst, type FormRules } from 'naive-ui';
-import type { FlatResponseData } from '@sa/axios';
-import { $t } from '@/locales';
-import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
+<script setup lang="tsx">
+import { computed, ref, watch } from 'vue';
+import { NButton, NPopconfirm, NTag } from 'naive-ui';
+import type { EnableStatus } from '@/constants/business';
+import { enableStatusRecord } from '@/constants/business';
 import { dictDataApi, dictTypeApi } from '@/service/api';
+import { useAppStore } from '@/store/modules/app';
+import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
+import { $t } from '@/locales';
+import DictDataOperateDrawer from './modules/dict-data-operate-drawer.vue';
+import DictDataSearch from './modules/dict-data-search.vue';
+import DictTypeOperateDrawer from './modules/dict-type-operate-drawer.vue';
+import DictTypeSearch from './modules/dict-type-search.vue';
 
-const message = useMessage();
-const dialog = useDialog();
+const appStore = useAppStore();
 
-const activeTab = ref<'type' | 'data'>('type');
+/* ---------- 字典类型 Tab ---------- */
 
-const dictTypeOptions = ref<{ id: number; name: string; code: string }[]>([]);
-async function loadDictTypeOptions() {
-  const { data, error } = await dictTypeApi.options();
-  if (!error) dictTypeOptions.value = data || [];
-}
-loadDictTypeOptions();
-
-const statusOptions = computed(() => [
-  { label: $t('page.system.common.enabled'), value: '1' },
-  { label: $t('page.system.common.disabled'), value: '0' }
-]);
-
-/* ============ 字典类型 Tab ============ */
-
-type TypeRow = Api.System.DictType;
-type TypeResp = FlatResponseData<App.Service.Response<unknown>, Api.System.ListResp<TypeRow>>;
-type TypeTableInst = ReturnType<typeof useNaivePaginatedTable<TypeResp, TypeRow>>;
-
-const typeFormRef = ref<FormInst | null>(null);
-const typeQueryForm = reactive<{
-  keyword: string;
-  status: '' | '1' | '0';
-}>({
-  keyword: '',
-  status: ''
-});
-
-const typeDrawerFormRef = ref<FormInst | null>(null);
-const typeDrawerForm = reactive<{
-  name: string;
-  code: string;
-  status: '1' | '0';
-  remark: string;
-}>({
-  name: '',
-  code: '',
-  status: '1',
-  remark: ''
-});
-
-const typeDrawerRules = computed<FormRules>(() => ({
-  name: [{ required: true, message: $t('form.required'), trigger: 'blur' }],
-  code: [{ required: true, message: $t('form.required'), trigger: 'blur' }],
-  status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
-}));
-
-// 先声明为 undefined 再赋值：api 闭包首次同步调用时尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
-let typeTbl: TypeTableInst | undefined;
-// eslint-disable-next-line prefer-const
-typeTbl = useNaivePaginatedTable<TypeResp, TypeRow>({
-  api: () => {
-    const params: Api.System.SearchParams = {
-      current: typeTbl?.pagination?.page ?? 1,
-      size: typeTbl?.pagination?.pageSize ?? 10,
-      keyword: typeQueryForm.keyword || undefined,
-      status: typeQueryForm.status || undefined
-    };
-    return dictTypeApi.list(params);
-  },
-  columns: () => [
-    { type: 'selection', width: 60 },
-    {
-      title: $t('common.index'),
-      key: '__index__',
-      width: 64,
-      render: (_row, rowIndex) =>
-        ((typeTbl?.pagination?.page ?? 1) - 1) * (typeTbl?.pagination?.pageSize ?? 10) + rowIndex + 1
-    },
-    { title: 'ID', key: 'id', width: 80 },
-    { title: $t('page.system.dict.form.name'), key: 'name', width: 180 },
-    { title: $t('page.system.dict.form.code'), key: 'code', width: 180 },
-    {
-      title: $t('page.system.dict.form.status'),
-      key: 'status',
-      width: 100,
-      render: row =>
-        h(
-          NTag,
-          { size: 'small', type: row.status === '1' ? 'success' : 'error' },
-          {
-            default: () => (row.status === '1' ? $t('page.system.common.enabled') : $t('page.system.common.disabled'))
-          }
-        )
-    },
-    { title: $t('page.system.dict.form.remark'), key: 'remark', width: 200 },
-    { title: $t('page.system.common.createdAt'), key: 'created_at', width: 180 },
-    {
-      title: $t('common.operate'),
-      key: 'actions',
-      width: 200,
-      fixed: 'right',
-      render: row =>
-        h('div', { style: { display: 'flex', gap: '8px' } }, [
-          createTypeButtonEdit(row),
-          createTypeButtonDelete(row)
-        ])
-    }
-  ],
-  transform: defaultTransform
+const typeSearchParams = ref<Api.System.DictTypeSearchParams>({
+  current: 1,
+  size: 10,
+  keyword: null,
+  name: null,
+  code: null,
+  status: null
 });
 
 const {
-  data: typeData,
-  loading: typeLoading,
   columns: typeColumns,
   columnChecks: typeColumnChecks,
+  data: typeData,
   getData: typeGetData,
   getDataByPage: typeGetDataByPage,
+  loading: typeLoading,
   mobilePagination: typeMobilePagination
-} = typeTbl;
+} = useNaivePaginatedTable({
+  api: () => dictTypeApi.list(typeSearchParams.value),
+  transform: response => defaultTransform(response),
+  onPaginationParamsChange: params => {
+    typeSearchParams.value.current = params.page;
+    typeSearchParams.value.size = params.pageSize;
+  },
+  columns: () => [
+    {
+      type: 'selection',
+      width: 48
+    },
+    {
+      key: 'index',
+      title: $t('common.index'),
+      align: 'center',
+      width: 64,
+      render: (_, index) => index + 1
+    },
+    {
+      key: 'name',
+      title: $t('page.system.dict.form.name'),
+      align: 'center',
+      width: 160
+    },
+    {
+      key: 'code',
+      title: $t('page.system.dict.form.code'),
+      align: 'center',
+      width: 160
+    },
+    {
+      key: 'status',
+      title: $t('page.system.dict.form.status'),
+      align: 'center',
+      width: 100,
+      render: row => {
+        if (!row.status) {
+          return null;
+        }
+
+        const tagMap: Record<EnableStatus, NaiveUI.ThemeColor> = {
+          '1': 'success',
+          '0': 'warning'
+        };
+
+        return <NTag type={tagMap[row.status]}>{$t(enableStatusRecord[row.status])}</NTag>;
+      }
+    },
+    {
+      key: 'remark',
+      title: $t('page.system.dict.form.remark'),
+      align: 'center',
+      width: 150
+    },
+    {
+      key: 'created_at',
+      title: $t('page.system.common.createdAt'),
+      align: 'center',
+      width: 150
+    },
+    {
+      key: 'operate',
+      title: $t('common.operate'),
+      align: 'center',
+      width: 128,
+      fixed: 'right',
+      render: row => (
+        <div class="flex-center gap-8px">
+          <NButton type="primary" ghost size="small" onClick={() => typeHandleEdit(row.id)}>
+            {$t('common.edit')}
+          </NButton>
+          <NPopconfirm onPositiveClick={() => handleTypeDelete(row.id)}>
+            {{
+              default: () => $t('common.confirmDelete'),
+              trigger: () => (
+                <NButton type="error" ghost size="small">
+                  {$t('common.delete')}
+                </NButton>
+              )
+            }}
+          </NPopconfirm>
+        </div>
+      )
+    }
+  ]
+});
 
 const {
   drawerVisible: typeDrawerVisible,
-  closeDrawer: typeCloseDrawer,
   operateType: typeOperateType,
-  handleAdd: typeHandleAdd,
   editingData: typeEditingData,
+  handleAdd: typeHandleAdd,
   handleEdit: typeHandleEdit,
   checkedRowKeys: typeCheckedRowKeys,
   onBatchDeleted: typeOnBatchDeleted,
   onDeleted: typeOnDeleted
 } = useTableOperate(typeData, 'id', typeGetData);
 
-watch(
-  typeEditingData,
-  v => {
-    if (v) {
-      Object.assign(typeDrawerForm, {
-        name: v.name || '',
-        code: v.code || '',
-        status: v.status || '1',
-        remark: v.remark || ''
-      });
-    } else {
-      Object.assign(typeDrawerForm, typeDefaultForm());
-    }
-  },
-  { immediate: true }
-);
+async function handleTypeBatchDelete() {
+  await dictTypeApi.batchDelete(typeCheckedRowKeys.value.map(Number));
 
-function typeDefaultForm(): typeof typeDrawerForm {
-  return {
-    name: '',
-    code: '',
-    status: '1',
-    remark: ''
-  };
+  typeOnBatchDeleted();
+
+  await getTypeOptions();
 }
 
-async function onTypeSubmit() {
-  const valid = await typeDrawerFormRef.value?.validate().catch(() => false);
-  if (!valid) {
-    message.warning($t('common.pleaseCheckValue'));
-    return;
+function typeEdit(id: number) {
+  typeHandleEdit(id);
+}
+
+async function handleTypeDelete(id: number) {
+  await dictTypeApi.remove(id);
+
+  typeOnDeleted();
+
+  await getTypeOptions();
+}
+
+async function handleTypeSubmitted() {
+  await typeGetDataByPage();
+
+  await getTypeOptions();
+}
+
+/* ---------- 字典数据 Tab ---------- */
+
+const typeOptions = ref<{ id: number; name: string; code: string }[]>([]);
+
+async function getTypeOptions() {
+  const { data, error } = await dictTypeApi.options();
+
+  if (!error) {
+    typeOptions.value = data ?? [];
   }
-  const payload: Partial<TypeRow> = { ...typeDrawerForm };
-  const { error } =
-    typeOperateType.value === 'add'
-      ? await dictTypeApi.add(payload)
-      : await dictTypeApi.update(typeEditingData.value!.id, payload);
-  if (error) return;
-  message.success(typeOperateType.value === 'add' ? $t('common.addSuccess') : $t('common.modifySuccess'));
-  typeCloseDrawer();
-  await typeGetData();
-  await loadDictTypeOptions();
 }
 
-function createTypeButtonEdit(row: TypeRow) {
-  return h(
-    'NButton',
-    {
-      size: 'small',
-      type: 'primary',
-      ghost: true,
-      onClick: () => typeHandleEdit(row.id)
-    },
-    { default: () => $t('common.edit') }
-  );
-}
+getTypeOptions();
 
-function createTypeButtonDelete(row: TypeRow) {
-  return h(
-    'NPopconfirm',
-    {
-      onPositiveClick: async () => {
-        const { error } = await dictTypeApi.remove(row.id);
-        if (!error) {
-          typeOnDeleted();
-          await loadDictTypeOptions();
-        }
-      }
-    },
-    {
-      trigger: () =>
-        h(
-          'NButton',
-          {
-            size: 'small',
-            type: 'error',
-            ghost: true
-          },
-          { default: () => $t('common.delete') }
-        ),
-      default: () => $t('common.confirmDelete')
-    }
-  );
-}
+const typeSelectOptions = computed(() => typeOptions.value.map(item => ({ label: item.name, value: item.id })));
 
-async function onTypeBatchDelete() {
-  if (!typeCheckedRowKeys.value.length) return;
-  dialog.warning({
-    title: $t('common.warning'),
-    content: $t('common.confirmDelete'),
-    positiveText: $t('common.confirm'),
-    negativeText: $t('common.cancel'),
-    onPositiveClick: async () => {
-      const ids = typeCheckedRowKeys.value.map(Number);
-      const { error } = await dictTypeApi.batchDelete(ids);
-      if (!error) {
-        typeOnBatchDeleted();
-        await loadDictTypeOptions();
-      }
-    }
-  });
-}
+const selectedTypeId = ref<number | null>(null);
 
-function onTypeSearch() {
-  typeGetDataByPage();
-}
-function onTypeReset() {
-  Object.assign(typeQueryForm, {
-    keyword: '',
-    status: ''
-  });
-  typeGetDataByPage();
-}
+const selectedCode = computed(() => typeOptions.value.find(item => item.id === selectedTypeId.value)?.code ?? null);
 
-/* ============ 字典数据 Tab ============ */
-
-type DataRow = Api.System.DictData;
-type DataResp = FlatResponseData<App.Service.Response<unknown>, Api.System.ListResp<DataRow>>;
-type DataTableInst = ReturnType<typeof useNaivePaginatedTable<DataResp, DataRow>>;
-
-const dataFormRef = ref<FormInst | null>(null);
-const selectedDictTypeId = ref<number | null>(null);
-const dataQueryForm = reactive<{
-  keyword: string;
-  status: '' | '1' | '0';
-}>({
-  keyword: '',
-  status: ''
-});
-
-const dataDrawerFormRef = ref<FormInst | null>(null);
-const dataDrawerForm = reactive<{
-  dictCode: string;
-  label: string;
-  value: string;
-  css_class: string;
-  list_class: string;
-  is_default: boolean;
-  status: '1' | '0';
-  remark: string;
-}>({
-  dictCode: '',
-  label: '',
-  value: '',
-  css_class: '',
-  list_class: '',
-  is_default: false,
-  status: '1',
-  remark: ''
-});
-
-const dataDrawerRules = computed<FormRules>(() => ({
-  dictCode: [{ required: true, message: $t('form.required'), trigger: 'change' }],
-  label: [{ required: true, message: $t('form.required'), trigger: 'blur' }],
-  value: [{ required: true, message: $t('form.required'), trigger: 'blur' }],
-  status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
-}));
-
-// 先声明为 undefined 再赋值：api 闭包首次同步调用时尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
-let dataTbl: DataTableInst | undefined;
-// eslint-disable-next-line prefer-const
-dataTbl = useNaivePaginatedTable<DataResp, DataRow>({
-  api: () => {
-    const params: Api.System.SearchParams = {
-      current: dataTbl?.pagination?.page ?? 1,
-      size: dataTbl?.pagination?.pageSize ?? 10,
-      keyword: dataQueryForm.keyword || undefined,
-      status: dataQueryForm.status || undefined
-    };
-    const selectedType = dictTypeOptions.value.find(t => t.id === selectedDictTypeId.value);
-    if (selectedType) {
-      params.dictCode = selectedType.code;
-    }
-    return dictDataApi.list(params);
-  },
-  columns: () => [
-    { type: 'selection', width: 60 },
-    {
-      title: $t('common.index'),
-      key: '__index__',
-      width: 64,
-      render: (_row, rowIndex) =>
-        ((dataTbl?.pagination?.page ?? 1) - 1) * (dataTbl?.pagination?.pageSize ?? 10) + rowIndex + 1
-    },
-    { title: 'ID', key: 'id', width: 80 },
-    { title: $t('page.system.dict.data.label'), key: 'label', width: 160 },
-    { title: $t('page.system.dict.data.value'), key: 'value', width: 160 },
-    { title: $t('page.system.dict.data.cssClass'), key: 'css_class', width: 120 },
-    { title: $t('page.system.dict.data.listClass'), key: 'list_class', width: 120 },
-    {
-      title: $t('page.system.dict.data.isDefault'),
-      key: 'is_default',
-      width: 100,
-      render: row => (row.is_default ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no'))
-    },
-    {
-      title: $t('page.system.dict.data.status'),
-      key: 'status',
-      width: 100,
-      render: row =>
-        h(
-          NTag,
-          { size: 'small', type: row.status === '1' ? 'success' : 'error' },
-          {
-            default: () => (row.status === '1' ? $t('page.system.common.enabled') : $t('page.system.common.disabled'))
-          }
-        )
-    },
-    { title: $t('page.system.dict.data.remark'), key: 'remark', width: 200 },
-    { title: $t('page.system.common.createdAt'), key: 'created_at', width: 180 },
-    {
-      title: $t('common.operate'),
-      key: 'actions',
-      width: 200,
-      fixed: 'right',
-      render: row =>
-        h('div', { style: { display: 'flex', gap: '8px' } }, [
-          createDataButtonEdit(row),
-          createDataButtonDelete(row)
-        ])
-    }
-  ],
-  transform: defaultTransform
+const dataSearchParams = ref<Api.System.DictDataSearchParams>({
+  current: 1,
+  size: 10,
+  keyword: null,
+  label: null,
+  status: null
 });
 
 const {
-  data: dataData,
-  loading: dataLoading,
   columns: dataColumns,
   columnChecks: dataColumnChecks,
+  data: dataData,
   getData: dataGetData,
   getDataByPage: dataGetDataByPage,
+  loading: dataLoading,
   mobilePagination: dataMobilePagination
-} = dataTbl;
+} = useNaivePaginatedTable({
+  immediate: false,
+  api: () => dictDataApi.list({ ...dataSearchParams.value, dictCode: selectedCode.value || undefined }),
+  transform: response => defaultTransform(response),
+  onPaginationParamsChange: params => {
+    dataSearchParams.value.current = params.page;
+    dataSearchParams.value.size = params.pageSize;
+  },
+  columns: () => [
+    {
+      type: 'selection',
+      width: 48
+    },
+    {
+      key: 'index',
+      title: $t('common.index'),
+      align: 'center',
+      width: 64,
+      render: (_, index) => index + 1
+    },
+    {
+      key: 'label',
+      title: $t('page.system.dict.data.label'),
+      align: 'center',
+      width: 190
+    },
+    {
+      key: 'value',
+      title: $t('page.system.dict.data.value'),
+      align: 'center',
+      width: 190
+    },
+    {
+      key: 'css_class',
+      title: $t('page.system.dict.data.cssClass'),
+      align: 'center',
+      width: 150
+    },
+    {
+      key: 'list_class',
+      title: $t('page.system.dict.data.listClass'),
+      align: 'center',
+      width: 150
+    },
+    {
+      key: 'is_default',
+      title: $t('page.system.dict.data.isDefault'),
+      align: 'center',
+      width: 100,
+      render: row => (
+        <NTag type={row.is_default ? 'success' : 'default'}>
+          {row.is_default ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no')}
+        </NTag>
+      )
+    },
+    {
+      key: 'status',
+      title: $t('page.system.dict.data.status'),
+      align: 'center',
+      width: 100,
+      render: row => {
+        if (!row.status) {
+          return null;
+        }
+
+        const tagMap: Record<EnableStatus, NaiveUI.ThemeColor> = {
+          '1': 'success',
+          '0': 'warning'
+        };
+
+        return <NTag type={tagMap[row.status]}>{$t(enableStatusRecord[row.status])}</NTag>;
+      }
+    },
+    {
+      key: 'created_at',
+      title: $t('page.system.common.createdAt'),
+      align: 'center',
+      width: 180
+    },
+    {
+      key: 'operate',
+      title: $t('common.operate'),
+      align: 'center',
+      width: 128,
+      fixed: 'right',
+      render: row => (
+        <div class="flex-center gap-8px">
+          <NButton type="primary" ghost size="small" onClick={() => dataHandleEdit(row.id)}>
+            {$t('common.edit')}
+          </NButton>
+          <NPopconfirm onPositiveClick={() => handleDataDelete(row.id)}>
+            {{
+              default: () => $t('common.confirmDelete'),
+              trigger: () => (
+                <NButton type="error" ghost size="small">
+                  {$t('common.delete')}
+                </NButton>
+              )
+            }}
+          </NPopconfirm>
+        </div>
+      )
+    }
+  ]
+});
 
 const {
   drawerVisible: dataDrawerVisible,
-  closeDrawer: dataCloseDrawer,
   operateType: dataOperateType,
-  handleAdd: dataHandleAdd,
   editingData: dataEditingData,
+  handleAdd: dataHandleAdd,
   handleEdit: dataHandleEdit,
   checkedRowKeys: dataCheckedRowKeys,
   onBatchDeleted: dataOnBatchDeleted,
   onDeleted: dataOnDeleted
 } = useTableOperate(dataData, 'id', dataGetData);
 
-watch(
-  dataEditingData,
-  v => {
-    if (v) {
-      Object.assign(dataDrawerForm, {
-        dictCode: v.dictCode || '',
-        label: v.label || '',
-        value: v.value || '',
-        css_class: v.css_class || '',
-        list_class: v.list_class || '',
-        is_default: v.is_default || false,
-        status: v.status || '1',
-        remark: v.remark || ''
-      });
-    } else {
-      const selectedType = dictTypeOptions.value.find(t => t.id === selectedDictTypeId.value);
-      Object.assign(dataDrawerForm, {
-        ...dataDefaultForm(),
-        dictCode: selectedType?.code || ''
-      });
-    }
-  },
-  { immediate: true }
-);
+async function handleDataBatchDelete() {
+  await dictDataApi.batchDelete(dataCheckedRowKeys.value.map(Number));
 
-function dataDefaultForm(): typeof dataDrawerForm {
-  return {
-    dictCode: '',
-    label: '',
-    value: '',
-    css_class: '',
-    list_class: '',
-    is_default: false,
-    status: '1',
-    remark: ''
-  };
+  dataOnBatchDeleted();
 }
 
-async function onDataSubmit() {
-  const valid = await dataDrawerFormRef.value?.validate().catch(() => false);
-  if (!valid) {
-    message.warning($t('common.pleaseCheckValue'));
-    return;
-  }
-  const payload: Partial<DataRow> = { ...dataDrawerForm };
-  const { error } =
-    dataOperateType.value === 'add'
-      ? await dictDataApi.add(payload)
-      : await dictDataApi.update(dataEditingData.value!.id, payload);
-  if (error) return;
-  message.success(dataOperateType.value === 'add' ? $t('common.addSuccess') : $t('common.modifySuccess'));
-  dataCloseDrawer();
-  await dataGetData();
+function dataEdit(id: number) {
+  dataHandleEdit(id);
 }
 
-function createDataButtonEdit(row: DataRow) {
-  return h(
-    'NButton',
-    {
-      size: 'small',
-      type: 'primary',
-      ghost: true,
-      onClick: () => dataHandleEdit(row.id)
-    },
-    { default: () => $t('common.edit') }
-  );
-}
+async function handleDataDelete(id: number) {
+  await dictDataApi.remove(id);
 
-function createDataButtonDelete(row: DataRow) {
-  return h(
-    'NPopconfirm',
-    {
-      onPositiveClick: async () => {
-        const { error } = await dictDataApi.remove(row.id);
-        if (!error) dataOnDeleted();
-      }
-    },
-    {
-      trigger: () =>
-        h(
-          'NButton',
-          {
-            size: 'small',
-            type: 'error',
-            ghost: true
-          },
-          { default: () => $t('common.delete') }
-        ),
-      default: () => $t('common.confirmDelete')
-    }
-  );
+  dataOnDeleted();
 }
-
-async function onDataBatchDelete() {
-  if (!dataCheckedRowKeys.value.length) return;
-  dialog.warning({
-    title: $t('common.warning'),
-    content: $t('common.confirmDelete'),
-    positiveText: $t('common.confirm'),
-    negativeText: $t('common.cancel'),
-    onPositiveClick: async () => {
-      const ids = dataCheckedRowKeys.value.map(Number);
-      const { error } = await dictDataApi.batchDelete(ids);
-      if (!error) dataOnBatchDeleted();
-    }
-  });
-}
-
-function onDataSearch() {
-  dataGetDataByPage();
-}
-function onDataReset() {
-  Object.assign(dataQueryForm, {
-    keyword: '',
-    status: ''
-  });
-  dataGetDataByPage();
-}
-
-watch(selectedDictTypeId, () => {
-  if (selectedDictTypeId.value) {
-    dataGetData();
-  }
-});
 
 function handleDataAdd() {
-  if (!selectedDictTypeId.value) {
-    message.warning($t('page.system.dict.selectTypeFirst'));
+  if (!selectedTypeId.value) {
+    window.$message?.warning($t('page.system.dict.selectTypeFirst'));
+
     return;
   }
+
   dataHandleAdd();
 }
+
+watch(selectedTypeId, val => {
+  dataSearchParams.value.current = 1;
+  dataCheckedRowKeys.value = [];
+
+  if (val === null) {
+    return;
+  }
+
+  dataGetDataByPage();
+});
 </script>
 
 <template>
-  <div class="min-h-full">
-    <NSpace vertical :size="12">
-      <NTabs v-model:value="activeTab" type="line" animated>
+  <div class="min-h-500px flex-col-stretch gap-16px overflow-hidden lt-sm:overflow-auto">
+    <NCard :title="$t('page.system.dict.title')" :bordered="false" size="small" class="card-wrapper sm:flex-1-hidden">
+      <NTabs type="line" animated>
         <NTabPane name="type" :tab="$t('page.system.dict.typeTab')">
-          <NSpace vertical :size="12">
-            <NCard>
-              <NForm ref="typeFormRef" inline label-placement="left" label-width="auto" :model="typeQueryForm">
-                <NFormItem :label="$t('common.keywordSearch')">
-                  <NInput
-                    v-model:value="typeQueryForm.keyword"
-                    clearable
-                    :placeholder="$t('common.keywordSearch')"
-                  />
-                </NFormItem>
-                <NFormItem :label="$t('page.system.dict.form.status')">
-                  <NSelect
-                    v-model:value="typeQueryForm.status"
-                    :options="statusOptions"
-                    clearable
-                  />
-                </NFormItem>
-                <NFormItem>
-                  <NSpace>
-                    <NButton type="primary" @click="onTypeSearch">
-                      <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-                    </NButton>
-                    <NButton @click="onTypeReset">
-                      <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-                    </NButton>
-                  </NSpace>
-                </NFormItem>
-              </NForm>
-            </NCard>
-
-            <NCard :bordered="false" class="!mt-0">
-              <TableHeaderOperation
-                v-model:columns="typeColumnChecks"
-                :loading="typeLoading"
-                :disabled-delete="!typeCheckedRowKeys.length"
-                @add="typeHandleAdd"
-                @delete="onTypeBatchDelete"
-                @refresh="typeGetData"
-              />
-
-              <NDataTable
-                v-model:checked-row-keys="typeCheckedRowKeys"
-                :columns="typeColumns"
-                :data="typeData"
-                :loading="typeLoading"
-                :pagination="typeMobilePagination"
-                :scroll-x="1500"
-                :bordered="false"
-                striped
-              />
-            </NCard>
-          </NSpace>
+          <div class="flex-col-stretch gap-16px">
+            <DictTypeSearch v-model:model="typeSearchParams" @search="typeGetDataByPage" />
+            <TableHeaderOperation
+              v-model:columns="typeColumnChecks"
+              :disabled-delete="typeCheckedRowKeys.length === 0"
+              :loading="typeLoading"
+              @add="typeHandleAdd"
+              @delete="handleTypeBatchDelete"
+              @refresh="typeGetData"
+            />
+            <NDataTable
+              v-model:checked-row-keys="typeCheckedRowKeys"
+              :columns="typeColumns"
+              :data="typeData"
+              size="small"
+              :flex-height="!appStore.isMobile"
+              :scroll-x="960"
+              :loading="typeLoading"
+              remote
+              :row-key="row => row.id"
+              :pagination="typeMobilePagination"
+              class="sm:h-full"
+              striped
+            />
+            <DictTypeOperateDrawer
+              v-model:visible="typeDrawerVisible"
+              :operate-type="typeOperateType"
+              :row-data="typeEditingData"
+              @submitted="handleTypeSubmitted"
+            />
+          </div>
         </NTabPane>
-
         <NTabPane name="data" :tab="$t('page.system.dict.dataTab')">
-          <NSpace vertical :size="12">
-            <NCard>
-              <NForm inline label-placement="left" label-width="auto">
-                <NFormItem :label="$t('page.system.dict.typeTab')" required>
-                  <NSelect
-                    v-model:value="selectedDictTypeId"
-                    :options="dictTypeOptions.map(t => ({ label: t.name, value: t.id }))"
-                    :placeholder="$t('page.system.dict.selectTypePlaceholder')"
-                    clearable
-                  />
-                </NFormItem>
-              </NForm>
-            </NCard>
-
-            <NCard>
-              <NForm ref="dataFormRef" inline label-placement="left" label-width="auto" :model="dataQueryForm">
-                <NFormItem :label="$t('common.keywordSearch')">
-                  <NInput
-                    v-model:value="dataQueryForm.keyword"
-                    clearable
-                    :placeholder="$t('common.keywordSearch')"
-                  />
-                </NFormItem>
-                <NFormItem :label="$t('page.system.dict.data.status')">
-                  <NSelect
-                    v-model:value="dataQueryForm.status"
-                    :options="statusOptions"
-                    clearable
-                  />
-                </NFormItem>
-                <NFormItem>
-                  <NSpace>
-                    <NButton type="primary" :disabled="!selectedDictTypeId" @click="onDataSearch">
-                      <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-                    </NButton>
-                    <NButton @click="onDataReset">
-                      <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-                    </NButton>
-                  </NSpace>
-                </NFormItem>
-              </NForm>
-            </NCard>
-
-            <NCard :bordered="false" class="!mt-0">
-              <TableHeaderOperation
-                v-model:columns="dataColumnChecks"
-                :loading="dataLoading"
-                :disabled-delete="!dataCheckedRowKeys.length || !selectedDictTypeId"
-                @add="handleDataAdd"
-                @delete="onDataBatchDelete"
-                @refresh="dataGetData"
-              />
-
-              <NDataTable
-                v-model:checked-row-keys="dataCheckedRowKeys"
-                :columns="dataColumns"
-                :data="dataData"
-                :loading="dataLoading"
-                :pagination="dataMobilePagination"
-                :scroll-x="1700"
-                :bordered="false"
-                striped
-              />
-            </NCard>
-          </NSpace>
+          <div class="flex-col-stretch gap-16px">
+            <NSelect
+              v-model:value="selectedTypeId"
+              :options="typeSelectOptions"
+              :placeholder="$t('page.system.dict.selectTypePlaceholder')"
+              clearable
+              filterable
+              class="w-320px"
+            />
+            <NAlert v-if="!selectedTypeId" type="info" :title="$t('page.system.dict.selectTypeFirst')" />
+            <DictDataSearch v-model:model="dataSearchParams" @search="dataGetDataByPage" />
+            <TableHeaderOperation
+              v-model:columns="dataColumnChecks"
+              :disabled-delete="dataCheckedRowKeys.length === 0"
+              :loading="dataLoading"
+              @add="handleDataAdd"
+              @delete="handleDataBatchDelete"
+              @refresh="dataGetData"
+            />
+            <NDataTable
+              v-model:checked-row-keys="dataCheckedRowKeys"
+              :columns="dataColumns"
+              :data="selectedTypeId ? dataData : []"
+              size="small"
+              :flex-height="!appStore.isMobile"
+              :scroll-x="1300"
+              :loading="dataLoading"
+              remote
+              :row-key="row => row.id"
+              :pagination="dataMobilePagination"
+              class="sm:h-full"
+              striped
+            />
+            <DictDataOperateDrawer
+              v-model:visible="dataDrawerVisible"
+              :operate-type="dataOperateType"
+              :row-data="dataEditingData"
+              :dict-type-id="selectedTypeId"
+              @submitted="dataGetDataByPage"
+            />
+          </div>
         </NTabPane>
       </NTabs>
-    </NSpace>
-
-    <!-- 字典类型 抽屉 -->
-    <NDrawer v-model:show="typeDrawerVisible" :width="640" placement="right" :mask-closable="false">
-      <NDrawerContent
-        :title="typeOperateType === 'add' ? $t('common.add') : $t('common.edit')"
-        :closable="true"
-      >
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-          <NButton size="small" @click="typeCloseDrawer">{{ $t('common.close') }}</NButton>
-        </div>
-        <NForm ref="typeDrawerFormRef" label-placement="top" :model="typeDrawerForm" :rules="typeDrawerRules">
-          <NFormItem :label="$t('page.system.dict.form.name')" path="name">
-            <NInput v-model:value="typeDrawerForm.name" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.form.code')" path="code">
-            <NInput v-model:value="typeDrawerForm.code" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.form.status')" path="status">
-            <NRadioGroup v-model:value="typeDrawerForm.status">
-              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
-              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
-            </NRadioGroup>
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.form.remark')" path="remark">
-            <NInput v-model:value="typeDrawerForm.remark" type="textarea" :rows="3" />
-          </NFormItem>
-        </NForm>
-        <template #footer>
-          <NSpace justify="end">
-            <NButton @click="typeCloseDrawer">{{ $t('common.cancel') }}</NButton>
-            <NButton type="primary" :loading="typeLoading" @click="onTypeSubmit">{{ $t('common.confirm') }}</NButton>
-          </NSpace>
-        </template>
-      </NDrawerContent>
-    </NDrawer>
-
-    <!-- 字典数据 抽屉 -->
-    <NDrawer v-model:show="dataDrawerVisible" :width="640" placement="right" :mask-closable="false">
-      <NDrawerContent
-        :title="dataOperateType === 'add' ? $t('common.add') : $t('common.edit')"
-        :closable="true"
-      >
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-          <NButton size="small" @click="dataCloseDrawer">{{ $t('common.close') }}</NButton>
-        </div>
-        <NForm ref="dataDrawerFormRef" label-placement="top" :model="dataDrawerForm" :rules="dataDrawerRules">
-          <NFormItem :label="$t('page.system.dict.form.code')" path="dictCode">
-            <NSelect
-              v-model:value="dataDrawerForm.dictCode"
-              :options="dictTypeOptions.map(t => ({ label: t.name, value: t.code }))"
-            />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.label')" path="label">
-            <NInput v-model:value="dataDrawerForm.label" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.value')" path="value">
-            <NInput v-model:value="dataDrawerForm.value" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.cssClass')" path="css_class">
-            <NInput v-model:value="dataDrawerForm.css_class" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.listClass')" path="list_class">
-            <NInput v-model:value="dataDrawerForm.list_class" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.isDefault')" path="is_default">
-            <NSwitch v-model:value="dataDrawerForm.is_default" />
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.status')" path="status">
-            <NRadioGroup v-model:value="dataDrawerForm.status">
-              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
-              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
-            </NRadioGroup>
-          </NFormItem>
-          <NFormItem :label="$t('page.system.dict.data.remark')" path="remark">
-            <NInput v-model:value="dataDrawerForm.remark" type="textarea" :rows="3" />
-          </NFormItem>
-        </NForm>
-        <template #footer>
-          <NSpace justify="end">
-            <NButton @click="dataCloseDrawer">{{ $t('common.cancel') }}</NButton>
-            <NButton type="primary" :loading="dataLoading" @click="onDataSubmit">{{ $t('common.confirm') }}</NButton>
-          </NSpace>
-        </template>
-      </NDrawerContent>
-    </NDrawer>
+    </NCard>
   </div>
 </template>

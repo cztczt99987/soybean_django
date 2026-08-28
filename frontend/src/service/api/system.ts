@@ -119,9 +119,9 @@ export const postApi = {
 /** ========== 字典类型 ========== */
 
 export const dictTypeApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.DictTypeSearchParams) =>
     list<Api.System.ListResp<Api.System.DictType>>('/system/dict/type/', params),
-  options: () => request<any[]>({ url: '/system/dict/type/options/' }),
+  options: () => request<{ id: number; name: string; code: string }[]>({ url: '/system/dict/type/options/' }),
   items: (id: number) => request<Api.System.DictData[]>({ url: `/system/dict/type/${id}/items/` }),
   add: (data: Partial<Api.System.DictType>) => add<Api.System.DictType>('/system/dict/type/', data),
   update: (id: number, data: Partial<Api.System.DictType>) =>
@@ -133,7 +133,7 @@ export const dictTypeApi = {
 /** ========== 字典明细 ========== */
 
 export const dictDataApi = {
-  list: (params?: Api.System.SearchParams) =>
+  list: (params?: Api.System.DictDataSearchParams) =>
     list<Api.System.ListResp<Api.System.DictData>>('/system/dict/data/', params),
   byCode: (code: string) =>
     request<Api.System.DictData[]>({ url: `/system/dict/data/by-code/?code=${encodeURIComponent(code)}` }),
