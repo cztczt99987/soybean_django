@@ -227,7 +227,8 @@ async function handleSubmitAssignMenus() {
       <NTreeSelect
         v-model:value="assignMenuIds"
         :options="menuTreeOptions"
-        :field-names="{ label: 'title', key: 'id' }"
+        key-field="id"
+        label-field="title"
         multiple
         checkable
         cascade

@@ -93,7 +93,8 @@ async function search() {
               <NTreeSelect
                 v-model:value="model.deptId"
                 :options="deptOptions"
-                :field-names="{ label: 'name', key: 'id' }"
+                key-field="id"
+                label-field="name"
                 :placeholder="$t('page.system.user.form.dept')"
                 clearable
               />

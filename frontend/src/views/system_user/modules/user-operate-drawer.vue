@@ -182,7 +182,8 @@ watch(visible, () => {
           <NTreeSelect
             v-model:value="model.department_id"
             :options="deptOptions"
-            :field-names="{ label: 'name', key: 'id' }"
+            key-field="id"
+            label-field="name"
             :placeholder="$t('page.system.user.form.dept')"
             clearable
           />

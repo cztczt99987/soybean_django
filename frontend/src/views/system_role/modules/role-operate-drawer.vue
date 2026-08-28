@@ -137,7 +137,8 @@ watch(visible, () => {
           <NTreeSelect
             v-model:value="model.menuIds"
             :options="menuTreeOptions"
-            :field-names="{ label: 'title', key: 'id' }"
+            key-field="id"
+            label-field="title"
             multiple
             checkable
             cascade
@@ -148,7 +149,8 @@ watch(visible, () => {
           <NTreeSelect
             v-model:value="model.departmentIds"
             :options="deptTreeOptions"
-            :field-names="{ label: 'name', key: 'id' }"
+            key-field="id"
+            label-field="name"
             multiple
             checkable
             cascade
