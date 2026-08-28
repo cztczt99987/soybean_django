@@ -341,6 +341,10 @@ const local: App.I18n.Schema = {
       },
       dict: {
         title: 'Dictionary Management',
+        typeTab: 'Dictionary Type',
+        dataTab: 'Dictionary Data',
+        selectTypePlaceholder: 'Please select a dictionary type',
+        selectTypeFirst: 'Please select a dictionary type first',
         form: { name: 'Dictionary Name', code: 'Dictionary Code', status: 'Status', remark: 'Remark' },
         data: { label: 'Label', value: 'Value', cssClass: 'CSS Class', listClass: 'List Class', isDefault: 'Is Default', status: 'Status', remark: 'Remark' }
       },
@@ -350,8 +354,26 @@ const local: App.I18n.Schema = {
       },
       log: {
         title: 'Log Management',
-        fields: { username: 'Username', module: 'Module', description: 'Description', operationType: 'Operation Type', method: 'Method', url: 'URL', ip: 'IP', status: 'Status', costTime: 'Cost Time', operatedAt: 'Operated At' },
-        action: { clean: 'Clean N Days Ago' }
+        fields: { username: 'Username', module: 'Module', description: 'Description', operationType: 'Operation Type', method: 'Method', url: 'URL', ip: 'IP', status: 'Status', costTime: 'Cost Time', operatedAt: 'Operated At', dateRange: 'Date Range' },
+        action: { clean: 'Clean N Days Ago', cleanTitle: 'Clean Logs', cleanDays: 'Clean logs older than specified days' }
+      },
+      common: {
+        createdAt: 'Created At',
+        enabled: 'Enabled',
+        disabled: 'Disabled',
+        success: 'Success',
+        failure: 'Failure',
+        gender: { unknown: 'Unknown', male: 'Male', female: 'Female' },
+        valueType: { S: 'String', N: 'Number', B: 'Boolean', J: 'JSON' },
+        menuType: { dir: 'Directory', menu: 'Menu', button: 'Button' },
+        dataScope: { all: 'All Data', custom: 'Custom Data', dept: 'Dept Data', deptAndChildren: 'Dept & Children Data', self: 'Self Data Only' },
+        operationType: { other: 'Other', create: 'Create', update: 'Update', remove: 'Remove', grant: 'Grant', export: 'Export', import: 'Import', login: 'Login', logout: 'Logout' },
+        resetPwdSuccess: 'Password reset successfully',
+        resetPwdConfirm: 'Are you sure you want to reset the password?',
+        changeStatusSuccess: 'Status changed successfully',
+        assignMenusSuccess: 'Menus assigned successfully',
+        cleanSuccess: 'Cleaned successfully',
+        dateRange: 'Date Range'
       }
     }
   },

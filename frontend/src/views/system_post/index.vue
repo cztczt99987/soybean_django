@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, reactive, ref, watch } from 'vue';
-import { useMessage, useDialog, type FormInst, type FormRules } from 'naive-ui';
+import { NTag, useMessage, useDialog, type FormInst, type FormRules } from 'naive-ui';
+import type { FlatResponseData } from '@sa/axios';
 import { $t } from '@/locales';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
 import { postApi } from '@/service/api';
@@ -38,27 +39,30 @@ const drawerRules = computed<FormRules>(() => ({
   status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
 }));
 
-let tbl: any;
-tbl = useNaivePaginatedTable({
+type Row = Api.System.Post;
+type Resp = FlatResponseData<App.Service.Response, Api.System.ListResp<Row>>;
+type TableInst = ReturnType<typeof useNaivePaginatedTable<Resp, Row>>;
+
+// 先声明为 undefined 再赋值：api 闭包首次同步调用时 tbl 尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
+let tbl: TableInst | undefined;
+// eslint-disable-next-line prefer-const
+tbl = useNaivePaginatedTable<Resp, Row>({
   api: () => {
-    const page = tbl?.pagination?.page ?? 1;
-    const pageSize = tbl?.pagination?.pageSize ?? 10;
-    const params: any = { current: page, size: pageSize };
-    Object.entries(queryForm).forEach(([k, v]) => {
-      if (v !== '' && v !== null && v !== undefined) params[k] = v;
-    });
+    const params: Api.System.SearchParams = {
+      current: tbl?.pagination?.page ?? 1,
+      size: tbl?.pagination?.pageSize ?? 10,
+      keyword: queryForm.keyword || undefined,
+      status: queryForm.status || undefined
+    };
     return postApi.list(params);
   },
   columns: () => [
     { type: 'selection', width: 60 },
     {
-      title: '#',
+      title: $t('common.index'),
       key: '__index__',
       width: 64,
-      render: (...args: any[]): any => {
-        const index = args.length >= 3 ? args[2] : args[1];
-        return ((tbl?.pagination?.page ?? 1) - 1) * (tbl?.pagination?.pageSize ?? 10) + index + 1;
-      }
+      render: (_row, rowIndex) => ((tbl?.pagination?.page ?? 1) - 1) * (tbl?.pagination?.pageSize ?? 10) + rowIndex + 1
     },
     { title: 'ID', key: 'id', width: 80 },
     { title: $t('page.system.post.form.name'), key: 'name', width: 180 },
@@ -67,58 +71,46 @@ tbl = useNaivePaginatedTable({
       title: $t('page.system.post.form.status'),
       key: 'status',
       width: 100,
-      render: (row: any) =>
+      render: row =>
         h(
-          'span',
+          NTag,
+          { size: 'small', type: row.status === '1' ? 'success' : 'error' },
           {
-            style: {
-              color: row.status === '1' ? '#18a058' : '#d03050'
-            }
-          },
-          row.status === '1' ? '正常' : '停用'
+            default: () => (row.status === '1' ? $t('page.system.common.enabled') : $t('page.system.common.disabled'))
+          }
         )
     },
     { title: $t('page.system.post.form.sortOrder'), key: 'sort_order', width: 100 },
     { title: $t('page.system.post.form.remark'), key: 'remark', width: 200 },
-    { title: '创建时间', key: 'created_at', width: 180 },
+    { title: $t('page.system.common.createdAt'), key: 'created_at', width: 180 },
     {
       title: $t('common.operate'),
       key: 'actions',
       width: 200,
       fixed: 'right',
-      render: (row: any): any =>
-        h('div', { style: { display: 'flex', gap: '8px' } }, [
-          createButtonEdit(row),
-          createButtonDelete(row)
-        ])
+      render: row =>
+        h('div', { style: { display: 'flex', gap: '8px' } }, [createButtonEdit(row), createButtonDelete(row)])
     }
   ],
-  transform: defaultTransform as any
-} as any);
+  transform: defaultTransform
+});
 
-const loading = tbl.loading;
-const data = tbl.data;
-const columns = tbl.columns;
-const columnChecks = tbl.columnChecks;
-const getData = tbl.getData;
-const pagination = tbl.pagination;
-const mobilePagination = tbl.mobilePagination;
-
-const ops: any = (useTableOperate as any)(data, 'id', getData);
-const drawerVisible = ops.drawerVisible;
-const openDrawer = ops.openDrawer;
-const closeDrawer = ops.closeDrawer;
-const operateType = ops.operateType;
-const handleAdd = ops.handleAdd;
-const editingData = ops.editingData;
-const handleEdit = ops.handleEdit;
-const checkedRowKeys = ops.checkedRowKeys;
-const onBatchDeleted = ops.onBatchDeleted;
-const onDeleted = ops.onDeleted;
+const { data, loading, columns, columnChecks, getData, getDataByPage, mobilePagination } = tbl;
+const {
+  drawerVisible,
+  closeDrawer,
+  operateType,
+  handleAdd,
+  editingData,
+  handleEdit,
+  checkedRowKeys,
+  onBatchDeleted,
+  onDeleted
+} = useTableOperate(data, 'id', getData);
 
 watch(
   editingData,
-  (v: any) => {
+  v => {
     if (v) {
       Object.assign(drawerForm, {
         name: v.name || '',
@@ -150,7 +142,7 @@ async function onSubmit() {
     message.warning($t('common.pleaseCheckValue'));
     return;
   }
-  const payload: any = { ...drawerForm };
+  const payload = { ...drawerForm };
   const { error } =
     operateType.value === 'add'
       ? await postApi.add(payload)
@@ -161,7 +153,7 @@ async function onSubmit() {
   await getData();
 }
 
-function createButtonEdit(row: any): any {
+function createButtonEdit(row: Row) {
   return h(
     'NButton',
     {
@@ -174,7 +166,7 @@ function createButtonEdit(row: any): any {
   );
 }
 
-function createButtonDelete(row: any): any {
+function createButtonDelete(row: Row) {
   return h(
     'NPopconfirm',
     {
@@ -215,8 +207,7 @@ async function onBatchDelete() {
 }
 
 function onSearch() {
-  pagination.page = 1;
-  getData();
+  getDataByPage();
 }
 function onReset() {
   Object.assign(queryForm, {
@@ -229,97 +220,97 @@ function onReset() {
 
 <template>
   <div class="min-h-full">
-  <NSpace vertical :size="12">
-    <NCard>
-      <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
-        <NFormItem :label="$t('common.keywordSearch')">
-          <NInput
-            v-model:value="queryForm.keyword"
-            clearable
-            :placeholder="$t('common.keywordSearch')"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.post.form.status')">
-          <NSelect
-            v-model:value="queryForm.status"
-            :options="[
-              { label: '正常', value: '1' },
-              { label: '停用', value: '0' }
-            ]"
-            clearable
-          />
-        </NFormItem>
-        <NFormItem>
-          <NSpace>
-            <NButton type="primary" @click="onSearch">
-              <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-            </NButton>
-            <NButton @click="onReset">
-              <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-            </NButton>
+    <NSpace vertical :size="12">
+      <NCard>
+        <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
+          <NFormItem :label="$t('common.keywordSearch')">
+            <NInput
+              v-model:value="queryForm.keyword"
+              clearable
+              :placeholder="$t('common.keywordSearch')"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.post.form.status')">
+            <NSelect
+              v-model:value="queryForm.status"
+              :options="[
+                { label: $t('page.system.common.enabled'), value: '1' },
+                { label: $t('page.system.common.disabled'), value: '0' }
+              ]"
+              clearable
+            />
+          </NFormItem>
+          <NFormItem>
+            <NSpace>
+              <NButton type="primary" @click="onSearch">
+                <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
+              </NButton>
+              <NButton @click="onReset">
+                <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
+              </NButton>
+            </NSpace>
+          </NFormItem>
+        </NForm>
+      </NCard>
+
+      <NCard :bordered="false" class="!mt-0">
+        <TableHeaderOperation
+          v-model:columns="columnChecks"
+          :loading="loading"
+          :disabled-delete="!checkedRowKeys.length"
+          @add="handleAdd"
+          @delete="onBatchDelete"
+          @refresh="getData"
+        />
+
+        <NDataTable
+          v-model:checked-row-keys="checkedRowKeys"
+          :columns="columns"
+          :data="data"
+          :loading="loading"
+          :pagination="mobilePagination"
+          :scroll-x="1500"
+          :bordered="false"
+          striped
+        />
+      </NCard>
+    </NSpace>
+
+    <NDrawer v-model:show="drawerVisible" :width="640" placement="right" :mask-closable="false">
+      <NDrawerContent
+        :title="operateType === 'add' ? $t('common.add') : $t('common.edit')"
+        :closable="true"
+      >
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <NButton size="small" @click="closeDrawer">{{ $t('common.close') }}</NButton>
+        </div>
+        <NForm ref="drawerFormRef" label-placement="top" :model="drawerForm" :rules="drawerRules">
+          <NFormItem :label="$t('page.system.post.form.name')" path="name">
+            <NInput v-model:value="drawerForm.name" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.post.form.code')" path="code">
+            <NInput v-model:value="drawerForm.code" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.post.form.status')" path="status">
+            <NRadioGroup v-model:value="drawerForm.status">
+              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
+              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem :label="$t('page.system.post.form.sortOrder')" path="sort_order">
+            <NInputNumber v-model:value="drawerForm.sort_order" :min="0" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.post.form.remark')" path="remark">
+            <NInput v-model:value="drawerForm.remark" type="textarea" :rows="3" />
+          </NFormItem>
+        </NForm>
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="closeDrawer">{{ $t('common.cancel') }}</NButton>
+            <NButton type="primary" :loading="loading" @click="onSubmit">{{ $t('common.confirm') }}</NButton>
           </NSpace>
-        </NFormItem>
-      </NForm>
-    </NCard>
-
-    <NCard :bordered="false" class="!mt-0">
-      <TableHeaderOperation
-        v-model:columns="columnChecks"
-        :loading="loading"
-        :disabled-delete="!checkedRowKeys.length"
-        @add="handleAdd"
-        @delete="onBatchDelete"
-        @refresh="getData"
-      />
-
-      <NDataTable
-        :columns="columns"
-        :data="data"
-        :loading="loading"
-        :pagination="mobilePagination"
-        v-model:checked-row-keys="checkedRowKeys"
-        :scroll-x="1500"
-        :bordered="false"
-        striped
-      />
-    </NCard>
-  </NSpace>
-
-  <NDrawer v-model:show="drawerVisible" :width="640" placement="right" :mask-closable="false">
-    <NDrawerContent
-      :title="operateType === 'add' ? $t('common.add') : $t('common.edit')"
-      :closable="true"
-    >
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-        <NButton size="small" @click="closeDrawer">{{ $t('common.close') }}</NButton>
-      </div>
-      <NForm ref="drawerFormRef" label-placement="top" :model="drawerForm" :rules="drawerRules">
-        <NFormItem :label="$t('page.system.post.form.name')" path="name">
-          <NInput v-model:value="drawerForm.name" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.post.form.code')" path="code">
-          <NInput v-model:value="drawerForm.code" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.post.form.status')" path="status">
-          <NRadioGroup v-model:value="drawerForm.status">
-            <NRadio value="1">正常</NRadio>
-            <NRadio value="0">停用</NRadio>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem :label="$t('page.system.post.form.sortOrder')" path="sort_order">
-          <NInputNumber v-model:value="drawerForm.sort_order" :min="0" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.post.form.remark')" path="remark">
-          <NInput v-model:value="drawerForm.remark" type="textarea" :rows="3" />
-        </NFormItem>
-      </NForm>
-      <template #footer>
-        <NSpace justify="end">
-          <NButton @click="closeDrawer">{{ $t('common.cancel') }}</NButton>
-          <NButton type="primary" :loading="loading" @click="onSubmit">{{ $t('common.confirm') }}</NButton>
-        </NSpace>
-      </template>
-    </NDrawerContent>
-  </NDrawer>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, reactive, ref, watch } from 'vue';
-import { useMessage, useDialog, type FormInst, type FormRules } from 'naive-ui';
+import { NTag, useDialog, useMessage, type FormInst, type FormRules } from 'naive-ui';
 import { $t } from '@/locales';
 import { useTableOperate } from '@/hooks/common/table';
 import { menuApi } from '@/service/api';
@@ -52,7 +52,7 @@ const drawerForm = reactive<{
   remark: ''
 });
 
-const menuTree = ref<any[]>([]);
+const menuTree = ref<Api.System.Menu[]>([]);
 
 async function loadMenuTree() {
   const { data: resData, error } = await menuApi.tree();
@@ -68,28 +68,24 @@ const drawerRules = computed<FormRules>(() => ({
   status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
 }));
 
-const menuTypeOptions = [
-  { label: '目录', value: '1' },
-  { label: '菜单', value: '2' },
-  { label: '按钮', value: '3' }
-];
+const statusOptions = computed(() => [
+  { label: $t('page.system.common.enabled'), value: '1' },
+  { label: $t('page.system.common.disabled'), value: '0' }
+]);
 
-function filterTree(
-  items: any[],
-  keyword: string,
-  status: '' | '1' | '0'
-): any[] {
-  const result: any[] = [];
+const menuTypeOptions = computed(() => [
+  { label: $t('page.system.common.menuType.dir'), value: '1' },
+  { label: $t('page.system.common.menuType.menu'), value: '2' },
+  { label: $t('page.system.common.menuType.button'), value: '3' }
+]);
+
+function filterTree(items: Api.System.Menu[], keyword: string, status: '' | '1' | '0'): Api.System.Menu[] {
+  const result: Api.System.Menu[] = [];
   for (const item of items) {
     const matchKeyword =
-      !keyword ||
-      item.title?.includes(keyword) ||
-      item.name?.includes(keyword) ||
-      item.path?.includes(keyword);
+      !keyword || item.title?.includes(keyword) || item.name?.includes(keyword) || item.path?.includes(keyword);
     const matchStatus = !status || item.status === status;
-    const filteredChildren = item.children
-      ? filterTree(item.children, keyword, status)
-      : [];
+    const filteredChildren = item.children ? filterTree(item.children, keyword, status) : [];
     if ((matchKeyword && matchStatus) || filteredChildren.length > 0) {
       result.push({
         ...item,
@@ -101,7 +97,7 @@ function filterTree(
 }
 
 const loading = ref<boolean>(false);
-const rawData = ref<any[]>([]);
+const rawData = ref<Api.System.Menu[]>([]);
 
 const data = computed(() => filterTree(rawData.value, queryForm.keyword, queryForm.status));
 
@@ -118,7 +114,7 @@ async function getData() {
   }
 }
 
-const columns = computed<any[]>(() => [
+const columns = computed<NaiveUI.TableColumn<Api.System.Menu>[]>(() => [
   {
     title: $t('page.system.menu.form.title'),
     key: 'title',
@@ -130,7 +126,7 @@ const columns = computed<any[]>(() => [
     title: $t('page.system.menu.form.type'),
     key: 'menu_type',
     width: 100,
-    render: (row: any) => menuTypeOptions.find(o => o.value === row.menu_type)?.label || '-'
+    render: row => menuTypeOptions.value.find(o => o.value === row.menu_type)?.label || '-'
   },
   { title: $t('page.system.menu.form.icon'), key: 'icon', width: 100 },
   { title: $t('page.system.menu.form.order'), key: 'order', width: 80 },
@@ -138,15 +134,13 @@ const columns = computed<any[]>(() => [
     title: $t('page.system.menu.form.status'),
     key: 'status',
     width: 100,
-    render: (row: any) =>
+    render: row =>
       h(
-        'span',
+        NTag,
+        { size: 'small', type: row.status === '1' ? 'success' : 'error' },
         {
-          style: {
-            color: row.status === '1' ? '#18a058' : '#d03050'
-          }
-        },
-        row.status === '1' ? '正常' : '停用'
+          default: () => (row.status === '1' ? $t('page.system.common.enabled') : $t('page.system.common.disabled'))
+        }
       )
   },
   {
@@ -154,31 +148,19 @@ const columns = computed<any[]>(() => [
     key: 'actions',
     width: 200,
     fixed: 'right',
-    render: (row: any): any =>
-      h('div', { style: { display: 'flex', gap: '8px' } }, [
-        createButtonEdit(row),
-        createButtonDelete(row)
-      ])
+    render: row =>
+      h('div', { style: { display: 'flex', gap: '8px' } }, [createButtonEdit(row), createButtonDelete(row)])
   }
 ]);
 
 const columnChecks = ref<NaiveUI.TableColumnCheck[]>([]);
 
-const ops: any = (useTableOperate as any)(data as any, 'id', getData);
-const drawerVisible = ops.drawerVisible;
-const openDrawer = ops.openDrawer;
-const closeDrawer = ops.closeDrawer;
-const operateType = ops.operateType;
-const handleAdd = ops.handleAdd;
-const editingData = ops.editingData;
-const handleEdit = ops.handleEdit;
-const checkedRowKeys = ops.checkedRowKeys;
-const onBatchDeleted = ops.onBatchDeleted;
-const onDeleted = ops.onDeleted;
+const { drawerVisible, closeDrawer, operateType, handleAdd, editingData, handleEdit, checkedRowKeys, onBatchDeleted, onDeleted } =
+  useTableOperate(data, 'id', getData);
 
 watch(
   editingData,
-  (v: any) => {
+  v => {
     if (v) {
       Object.assign(drawerForm, {
         parentId: v.parentId || null,
@@ -204,22 +186,22 @@ watch(
   { immediate: true }
 );
 
-function defaultForm() {
+function defaultForm(): typeof drawerForm {
   return {
-    parentId: null as number | null,
+    parentId: null,
     name: '',
     title: '',
     path: '',
     component: '',
     permission: '',
     icon: '',
-    menu_type: '1' as const,
+    menu_type: '1',
     order: 0,
     i18n_key: '',
     keep_alive: false,
     hide_in_menu: false,
     external_link: '',
-    status: '1' as const,
+    status: '1',
     remark: ''
   };
 }
@@ -230,7 +212,7 @@ async function onSubmit() {
     message.warning($t('common.pleaseCheckValue'));
     return;
   }
-  const payload: any = { ...drawerForm };
+  const payload: Partial<Api.System.Menu> = { ...drawerForm };
   const { error } =
     operateType.value === 'add'
       ? await menuApi.add(payload)
@@ -241,7 +223,7 @@ async function onSubmit() {
   await getData();
 }
 
-function createButtonEdit(row: any): any {
+function createButtonEdit(row: Api.System.Menu) {
   return h(
     'NButton',
     {
@@ -254,7 +236,7 @@ function createButtonEdit(row: any): any {
   );
 }
 
-function createButtonDelete(row: any): any {
+function createButtonDelete(row: Api.System.Menu) {
   return h(
     'NPopconfirm',
     {
@@ -311,140 +293,137 @@ loadMenuTree();
 
 <template>
   <div class="min-h-full">
-  <NSpace vertical :size="12">
-    <NCard>
-      <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
-        <NFormItem :label="$t('common.keywordSearch')">
-          <NInput
-            v-model:value="queryForm.keyword"
-            clearable
-            :placeholder="$t('common.keywordSearch')"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.status')">
-          <NSelect
-            v-model:value="queryForm.status"
-            :options="[
-              { label: '正常', value: '1' },
-              { label: '停用', value: '0' }
-            ]"
-            clearable
-          />
-        </NFormItem>
-        <NFormItem>
-          <NSpace>
-            <NButton type="primary" @click="onSearch">
-              <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-            </NButton>
-            <NButton @click="onReset">
-              <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-            </NButton>
+    <NSpace vertical :size="12">
+      <NCard>
+        <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
+          <NFormItem :label="$t('common.keywordSearch')">
+            <NInput
+              v-model:value="queryForm.keyword"
+              clearable
+              :placeholder="$t('common.keywordSearch')"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.status')">
+            <NSelect
+              v-model:value="queryForm.status"
+              :options="statusOptions"
+              clearable
+            />
+          </NFormItem>
+          <NFormItem>
+            <NSpace>
+              <NButton type="primary" @click="onSearch">
+                <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
+              </NButton>
+              <NButton @click="onReset">
+                <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
+              </NButton>
+            </NSpace>
+          </NFormItem>
+        </NForm>
+      </NCard>
+
+      <NCard :bordered="false" class="!mt-0">
+        <TableHeaderOperation
+          v-model:columns="columnChecks"
+          :loading="loading"
+          :disabled-delete="!checkedRowKeys.length"
+          @add="handleAdd"
+          @delete="onBatchDelete"
+          @refresh="getData"
+        />
+
+        <NDataTable
+          v-model:checked-row-keys="checkedRowKeys"
+          :columns="columns"
+          :data="data"
+          :loading="loading"
+          :pagination="false"
+          :scroll-x="1400"
+          :bordered="false"
+          children-key="children"
+          :remote="false"
+          striped
+        />
+      </NCard>
+    </NSpace>
+
+    <NDrawer v-model:show="drawerVisible" :width="640" placement="right" :mask-closable="false">
+      <NDrawerContent
+        :title="operateType === 'add' ? $t('common.add') : $t('common.edit')"
+        :closable="true"
+      >
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <NButton size="small" @click="closeDrawer">{{ $t('common.close') }}</NButton>
+        </div>
+        <NForm ref="drawerFormRef" label-placement="top" :model="drawerForm" :rules="drawerRules">
+          <NFormItem :label="$t('page.system.menu.form.parent')" path="parentId">
+            <NTreeSelect
+              v-model:value="drawerForm.parentId"
+              :options="menuTree"
+              key-field="id"
+              label-field="title"
+              children-field="children"
+              clearable
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.name')" path="name">
+            <NInput v-model:value="drawerForm.name" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.title')" path="title">
+            <NInput v-model:value="drawerForm.title" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.path')" path="path">
+            <NInput v-model:value="drawerForm.path" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.component')" path="component">
+            <NInput v-model:value="drawerForm.component" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.permission')" path="permission">
+            <NInput v-model:value="drawerForm.permission" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.icon')" path="icon">
+            <NInput v-model:value="drawerForm.icon" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.type')" path="menu_type">
+            <NRadioGroup v-model:value="drawerForm.menu_type">
+              <NRadio value="1">{{ $t('page.system.common.menuType.dir') }}</NRadio>
+              <NRadio value="2">{{ $t('page.system.common.menuType.menu') }}</NRadio>
+              <NRadio value="3">{{ $t('page.system.common.menuType.button') }}</NRadio>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.order')" path="order">
+            <NInputNumber v-model:value="drawerForm.order" :min="0" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.i18nKey')" path="i18n_key">
+            <NInput v-model:value="drawerForm.i18n_key" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.keepAlive')" path="keep_alive">
+            <NSwitch v-model:value="drawerForm.keep_alive" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.hideInMenu')" path="hide_in_menu">
+            <NSwitch v-model:value="drawerForm.hide_in_menu" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.externalLink')" path="external_link">
+            <NInput v-model:value="drawerForm.external_link" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.status')" path="status">
+            <NRadioGroup v-model:value="drawerForm.status">
+              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
+              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem :label="$t('page.system.menu.form.remark')" path="remark">
+            <NInput v-model:value="drawerForm.remark" type="textarea" :rows="3" />
+          </NFormItem>
+        </NForm>
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="closeDrawer">{{ $t('common.cancel') }}</NButton>
+            <NButton type="primary" :loading="loading" @click="onSubmit">{{ $t('common.confirm') }}</NButton>
           </NSpace>
-        </NFormItem>
-      </NForm>
-    </NCard>
-
-    <NCard :bordered="false" class="!mt-0">
-      <TableHeaderOperation
-        v-model:columns="columnChecks"
-        :loading="loading"
-        :disabled-delete="!checkedRowKeys.length"
-        @add="handleAdd"
-        @delete="onBatchDelete"
-        @refresh="getData"
-      />
-
-      <NDataTable
-        :columns="columns"
-        :data="data"
-        :loading="loading"
-        :pagination="false"
-        v-model:checked-row-keys="checkedRowKeys"
-        :scroll-x="1400"
-        :bordered="false"
-        :children-key="'children'"
-        :remote="false"
-        striped
-      />
-    </NCard>
-  </NSpace>
-
-  <NDrawer v-model:show="drawerVisible" :width="640" placement="right" :mask-closable="false">
-    <NDrawerContent
-      :title="operateType === 'add' ? $t('common.add') : $t('common.edit')"
-      :closable="true"
-    >
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-        <NButton size="small" @click="closeDrawer">{{ $t('common.close') }}</NButton>
-      </div>
-      <NForm ref="drawerFormRef" label-placement="top" :model="drawerForm" :rules="drawerRules">
-        <NFormItem :label="$t('page.system.menu.form.parent')" path="parentId">
-          <NTreeSelect
-            v-model:value="drawerForm.parentId"
-            :options="menuTree"
-            key-field="id"
-            label-field="title"
-            children-field="children"
-            clearable
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.name')" path="name">
-          <NInput v-model:value="drawerForm.name" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.title')" path="title">
-          <NInput v-model:value="drawerForm.title" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.path')" path="path">
-          <NInput v-model:value="drawerForm.path" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.component')" path="component">
-          <NInput v-model:value="drawerForm.component" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.permission')" path="permission">
-          <NInput v-model:value="drawerForm.permission" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.icon')" path="icon">
-          <NInput v-model:value="drawerForm.icon" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.type')" path="menu_type">
-          <NRadioGroup v-model:value="drawerForm.menu_type">
-            <NRadio value="1">目录</NRadio>
-            <NRadio value="2">菜单</NRadio>
-            <NRadio value="3">按钮</NRadio>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.order')" path="order">
-          <NInputNumber v-model:value="drawerForm.order" :min="0" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.i18nKey')" path="i18n_key">
-          <NInput v-model:value="drawerForm.i18n_key" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.keepAlive')" path="keep_alive">
-          <NSwitch v-model:value="drawerForm.keep_alive" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.hideInMenu')" path="hide_in_menu">
-          <NSwitch v-model:value="drawerForm.hide_in_menu" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.externalLink')" path="external_link">
-          <NInput v-model:value="drawerForm.external_link" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.status')" path="status">
-          <NRadioGroup v-model:value="drawerForm.status">
-            <NRadio value="1">正常</NRadio>
-            <NRadio value="0">停用</NRadio>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem :label="$t('page.system.menu.form.remark')" path="remark">
-          <NInput v-model:value="drawerForm.remark" type="textarea" :rows="3" />
-        </NFormItem>
-      </NForm>
-      <template #footer>
-        <NSpace justify="end">
-          <NButton @click="closeDrawer">{{ $t('common.cancel') }}</NButton>
-          <NButton type="primary" :loading="loading" @click="onSubmit">{{ $t('common.confirm') }}</NButton>
-        </NSpace>
-      </template>
-    </NDrawerContent>
-  </NDrawer>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>

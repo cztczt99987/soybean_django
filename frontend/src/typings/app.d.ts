@@ -635,6 +635,10 @@ declare namespace App {
           };
           dict: {
             title: string;
+            typeTab: string;
+            dataTab: string;
+            selectTypePlaceholder: string;
+            selectTypeFirst: string;
             form: {
               name: string;
               code: string;
@@ -676,8 +680,38 @@ declare namespace App {
               status: string;
               costTime: string;
               operatedAt: string;
+              dateRange: string;
             };
-            action: { clean: string };
+            action: { clean: string; cleanTitle: string; cleanDays: string };
+          };
+          /** 8 个页面共享的通用文案 */
+          common: {
+            createdAt: string;
+            enabled: string;
+            disabled: string;
+            success: string;
+            failure: string;
+            gender: { unknown: string; male: string; female: string };
+            valueType: { S: string; N: string; B: string; J: string };
+            menuType: { dir: string; menu: string; button: string };
+            dataScope: { all: string; custom: string; dept: string; deptAndChildren: string; self: string };
+            operationType: {
+              other: string;
+              create: string;
+              update: string;
+              remove: string;
+              grant: string;
+              export: string;
+              import: string;
+              login: string;
+              logout: string;
+            };
+            resetPwdSuccess: string;
+            resetPwdConfirm: string;
+            changeStatusSuccess: string;
+            assignMenusSuccess: string;
+            cleanSuccess: string;
+            dateRange: string;
           };
         };
       };

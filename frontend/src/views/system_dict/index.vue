@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed, h, reactive, ref, watch } from 'vue';
-import { useMessage, useDialog, type FormInst, type FormRules } from 'naive-ui';
+import { NTag, useDialog, useMessage, type FormInst, type FormRules } from 'naive-ui';
+import type { FlatResponseData } from '@sa/axios';
 import { $t } from '@/locales';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
-import { dictTypeApi, dictDataApi } from '@/service/api';
+import { dictDataApi, dictTypeApi } from '@/service/api';
 
 const message = useMessage();
 const dialog = useDialog();
@@ -17,7 +18,16 @@ async function loadDictTypeOptions() {
 }
 loadDictTypeOptions();
 
+const statusOptions = computed(() => [
+  { label: $t('page.system.common.enabled'), value: '1' },
+  { label: $t('page.system.common.disabled'), value: '0' }
+]);
+
 /* ============ 字典类型 Tab ============ */
+
+type TypeRow = Api.System.DictType;
+type TypeResp = FlatResponseData<App.Service.Response<unknown>, Api.System.ListResp<TypeRow>>;
+type TypeTableInst = ReturnType<typeof useNaivePaginatedTable<TypeResp, TypeRow>>;
 
 const typeFormRef = ref<FormInst | null>(null);
 const typeQueryForm = reactive<{
@@ -47,27 +57,27 @@ const typeDrawerRules = computed<FormRules>(() => ({
   status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
 }));
 
-let typeTbl: any;
-typeTbl = useNaivePaginatedTable({
+// 先声明为 undefined 再赋值：api 闭包首次同步调用时尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
+let typeTbl: TypeTableInst | undefined;
+// eslint-disable-next-line prefer-const
+typeTbl = useNaivePaginatedTable<TypeResp, TypeRow>({
   api: () => {
-    const page = typeTbl?.pagination?.page ?? 1;
-    const pageSize = typeTbl?.pagination?.pageSize ?? 10;
-    const params: any = { current: page, size: pageSize };
-    Object.entries(typeQueryForm).forEach(([k, v]) => {
-      if (v !== '' && v !== null && v !== undefined) params[k] = v;
-    });
+    const params: Api.System.SearchParams = {
+      current: typeTbl?.pagination?.page ?? 1,
+      size: typeTbl?.pagination?.pageSize ?? 10,
+      keyword: typeQueryForm.keyword || undefined,
+      status: typeQueryForm.status || undefined
+    };
     return dictTypeApi.list(params);
   },
   columns: () => [
     { type: 'selection', width: 60 },
     {
-      title: '#',
+      title: $t('common.index'),
       key: '__index__',
       width: 64,
-      render: (...args: any[]): any => {
-        const index = args.length >= 3 ? args[2] : args[1];
-        return ((typeTbl?.pagination?.page ?? 1) - 1) * (typeTbl?.pagination?.pageSize ?? 10) + index + 1;
-      }
+      render: (_row, rowIndex) =>
+        ((typeTbl?.pagination?.page ?? 1) - 1) * (typeTbl?.pagination?.pageSize ?? 10) + rowIndex + 1
     },
     { title: 'ID', key: 'id', width: 80 },
     { title: $t('page.system.dict.form.name'), key: 'name', width: 180 },
@@ -76,57 +86,57 @@ typeTbl = useNaivePaginatedTable({
       title: $t('page.system.dict.form.status'),
       key: 'status',
       width: 100,
-      render: (row: any) =>
+      render: row =>
         h(
-          'span',
+          NTag,
+          { size: 'small', type: row.status === '1' ? 'success' : 'error' },
           {
-            style: {
-              color: row.status === '1' ? '#18a058' : '#d03050'
-            }
-          },
-          row.status === '1' ? '正常' : '停用'
+            default: () => (row.status === '1' ? $t('page.system.common.enabled') : $t('page.system.common.disabled'))
+          }
         )
     },
     { title: $t('page.system.dict.form.remark'), key: 'remark', width: 200 },
-    { title: '创建时间', key: 'created_at', width: 180 },
+    { title: $t('page.system.common.createdAt'), key: 'created_at', width: 180 },
     {
       title: $t('common.operate'),
       key: 'actions',
       width: 200,
       fixed: 'right',
-      render: (row: any): any =>
+      render: row =>
         h('div', { style: { display: 'flex', gap: '8px' } }, [
           createTypeButtonEdit(row),
           createTypeButtonDelete(row)
         ])
     }
   ],
-  transform: defaultTransform as any
-} as any);
+  transform: defaultTransform
+});
 
-const typeLoading = typeTbl.loading;
-const typeData = typeTbl.data;
-const typeColumns = typeTbl.columns;
-const typeColumnChecks = typeTbl.columnChecks;
-const typeGetData = typeTbl.getData;
-const typePagination = typeTbl.pagination;
-const typeMobilePagination = typeTbl.mobilePagination;
+const {
+  data: typeData,
+  loading: typeLoading,
+  columns: typeColumns,
+  columnChecks: typeColumnChecks,
+  getData: typeGetData,
+  getDataByPage: typeGetDataByPage,
+  mobilePagination: typeMobilePagination
+} = typeTbl;
 
-const typeOps: any = (useTableOperate as any)(typeData, 'id', typeGetData);
-const typeDrawerVisible = typeOps.drawerVisible;
-const typeOpenDrawer = typeOps.openDrawer;
-const typeCloseDrawer = typeOps.closeDrawer;
-const typeOperateType = typeOps.operateType;
-const typeHandleAdd = typeOps.handleAdd;
-const typeEditingData = typeOps.editingData;
-const typeHandleEdit = typeOps.handleEdit;
-const typeCheckedRowKeys = typeOps.checkedRowKeys;
-const typeOnBatchDeleted = typeOps.onBatchDeleted;
-const typeOnDeleted = typeOps.onDeleted;
+const {
+  drawerVisible: typeDrawerVisible,
+  closeDrawer: typeCloseDrawer,
+  operateType: typeOperateType,
+  handleAdd: typeHandleAdd,
+  editingData: typeEditingData,
+  handleEdit: typeHandleEdit,
+  checkedRowKeys: typeCheckedRowKeys,
+  onBatchDeleted: typeOnBatchDeleted,
+  onDeleted: typeOnDeleted
+} = useTableOperate(typeData, 'id', typeGetData);
 
 watch(
   typeEditingData,
-  (v: any) => {
+  v => {
     if (v) {
       Object.assign(typeDrawerForm, {
         name: v.name || '',
@@ -141,11 +151,11 @@ watch(
   { immediate: true }
 );
 
-function typeDefaultForm() {
+function typeDefaultForm(): typeof typeDrawerForm {
   return {
     name: '',
     code: '',
-    status: '1' as const,
+    status: '1',
     remark: ''
   };
 }
@@ -156,7 +166,7 @@ async function onTypeSubmit() {
     message.warning($t('common.pleaseCheckValue'));
     return;
   }
-  const payload: any = { ...typeDrawerForm };
+  const payload: Partial<TypeRow> = { ...typeDrawerForm };
   const { error } =
     typeOperateType.value === 'add'
       ? await dictTypeApi.add(payload)
@@ -168,7 +178,7 @@ async function onTypeSubmit() {
   await loadDictTypeOptions();
 }
 
-function createTypeButtonEdit(row: any): any {
+function createTypeButtonEdit(row: TypeRow) {
   return h(
     'NButton',
     {
@@ -181,7 +191,7 @@ function createTypeButtonEdit(row: any): any {
   );
 }
 
-function createTypeButtonDelete(row: any): any {
+function createTypeButtonDelete(row: TypeRow) {
   return h(
     'NPopconfirm',
     {
@@ -228,18 +238,21 @@ async function onTypeBatchDelete() {
 }
 
 function onTypeSearch() {
-  typePagination.page = 1;
-  typeGetData();
+  typeGetDataByPage();
 }
 function onTypeReset() {
   Object.assign(typeQueryForm, {
     keyword: '',
     status: ''
   });
-  onTypeSearch();
+  typeGetDataByPage();
 }
 
 /* ============ 字典数据 Tab ============ */
+
+type DataRow = Api.System.DictData;
+type DataResp = FlatResponseData<App.Service.Response<unknown>, Api.System.ListResp<DataRow>>;
+type DataTableInst = ReturnType<typeof useNaivePaginatedTable<DataResp, DataRow>>;
 
 const dataFormRef = ref<FormInst | null>(null);
 const selectedDictTypeId = ref<number | null>(null);
@@ -279,15 +292,17 @@ const dataDrawerRules = computed<FormRules>(() => ({
   status: [{ required: true, message: $t('form.required'), trigger: 'change' }]
 }));
 
-let dataTbl: any;
-dataTbl = useNaivePaginatedTable({
+// 先声明为 undefined 再赋值：api 闭包首次同步调用时尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
+let dataTbl: DataTableInst | undefined;
+// eslint-disable-next-line prefer-const
+dataTbl = useNaivePaginatedTable<DataResp, DataRow>({
   api: () => {
-    const page = dataTbl?.pagination?.page ?? 1;
-    const pageSize = dataTbl?.pagination?.pageSize ?? 10;
-    const params: any = { current: page, size: pageSize };
-    Object.entries(dataQueryForm).forEach(([k, v]) => {
-      if (v !== '' && v !== null && v !== undefined) params[k] = v;
-    });
+    const params: Api.System.SearchParams = {
+      current: dataTbl?.pagination?.page ?? 1,
+      size: dataTbl?.pagination?.pageSize ?? 10,
+      keyword: dataQueryForm.keyword || undefined,
+      status: dataQueryForm.status || undefined
+    };
     const selectedType = dictTypeOptions.value.find(t => t.id === selectedDictTypeId.value);
     if (selectedType) {
       params.dictCode = selectedType.code;
@@ -297,13 +312,11 @@ dataTbl = useNaivePaginatedTable({
   columns: () => [
     { type: 'selection', width: 60 },
     {
-      title: '#',
+      title: $t('common.index'),
       key: '__index__',
       width: 64,
-      render: (...args: any[]): any => {
-        const index = args.length >= 3 ? args[2] : args[1];
-        return ((dataTbl?.pagination?.page ?? 1) - 1) * (dataTbl?.pagination?.pageSize ?? 10) + index + 1;
-      }
+      render: (_row, rowIndex) =>
+        ((dataTbl?.pagination?.page ?? 1) - 1) * (dataTbl?.pagination?.pageSize ?? 10) + rowIndex + 1
     },
     { title: 'ID', key: 'id', width: 80 },
     { title: $t('page.system.dict.data.label'), key: 'label', width: 160 },
@@ -314,63 +327,63 @@ dataTbl = useNaivePaginatedTable({
       title: $t('page.system.dict.data.isDefault'),
       key: 'is_default',
       width: 100,
-      render: (row: any) => (row.is_default ? '是' : '否')
+      render: row => (row.is_default ? $t('common.yesOrNo.yes') : $t('common.yesOrNo.no'))
     },
     {
       title: $t('page.system.dict.data.status'),
       key: 'status',
       width: 100,
-      render: (row: any) =>
+      render: row =>
         h(
-          'span',
+          NTag,
+          { size: 'small', type: row.status === '1' ? 'success' : 'error' },
           {
-            style: {
-              color: row.status === '1' ? '#18a058' : '#d03050'
-            }
-          },
-          row.status === '1' ? '正常' : '停用'
+            default: () => (row.status === '1' ? $t('page.system.common.enabled') : $t('page.system.common.disabled'))
+          }
         )
     },
     { title: $t('page.system.dict.data.remark'), key: 'remark', width: 200 },
-    { title: '创建时间', key: 'created_at', width: 180 },
+    { title: $t('page.system.common.createdAt'), key: 'created_at', width: 180 },
     {
       title: $t('common.operate'),
       key: 'actions',
       width: 200,
       fixed: 'right',
-      render: (row: any): any =>
+      render: row =>
         h('div', { style: { display: 'flex', gap: '8px' } }, [
           createDataButtonEdit(row),
           createDataButtonDelete(row)
         ])
     }
   ],
-  transform: defaultTransform as any
-} as any);
+  transform: defaultTransform
+});
 
-const dataLoading = dataTbl.loading;
-const dataData = dataTbl.data;
-const dataColumns = dataTbl.columns;
-const dataColumnChecks = dataTbl.columnChecks;
-const dataGetData = dataTbl.getData;
-const dataPagination = dataTbl.pagination;
-const dataMobilePagination = dataTbl.mobilePagination;
+const {
+  data: dataData,
+  loading: dataLoading,
+  columns: dataColumns,
+  columnChecks: dataColumnChecks,
+  getData: dataGetData,
+  getDataByPage: dataGetDataByPage,
+  mobilePagination: dataMobilePagination
+} = dataTbl;
 
-const dataOps: any = (useTableOperate as any)(dataData, 'id', dataGetData);
-const dataDrawerVisible = dataOps.drawerVisible;
-const dataOpenDrawer = dataOps.openDrawer;
-const dataCloseDrawer = dataOps.closeDrawer;
-const dataOperateType = dataOps.operateType;
-const dataHandleAdd = dataOps.handleAdd;
-const dataEditingData = dataOps.editingData;
-const dataHandleEdit = dataOps.handleEdit;
-const dataCheckedRowKeys = dataOps.checkedRowKeys;
-const dataOnBatchDeleted = dataOps.onBatchDeleted;
-const dataOnDeleted = dataOps.onDeleted;
+const {
+  drawerVisible: dataDrawerVisible,
+  closeDrawer: dataCloseDrawer,
+  operateType: dataOperateType,
+  handleAdd: dataHandleAdd,
+  editingData: dataEditingData,
+  handleEdit: dataHandleEdit,
+  checkedRowKeys: dataCheckedRowKeys,
+  onBatchDeleted: dataOnBatchDeleted,
+  onDeleted: dataOnDeleted
+} = useTableOperate(dataData, 'id', dataGetData);
 
 watch(
   dataEditingData,
-  (v: any) => {
+  v => {
     if (v) {
       Object.assign(dataDrawerForm, {
         dictCode: v.dictCode || '',
@@ -393,7 +406,7 @@ watch(
   { immediate: true }
 );
 
-function dataDefaultForm() {
+function dataDefaultForm(): typeof dataDrawerForm {
   return {
     dictCode: '',
     label: '',
@@ -401,7 +414,7 @@ function dataDefaultForm() {
     css_class: '',
     list_class: '',
     is_default: false,
-    status: '1' as const,
+    status: '1',
     remark: ''
   };
 }
@@ -412,7 +425,7 @@ async function onDataSubmit() {
     message.warning($t('common.pleaseCheckValue'));
     return;
   }
-  const payload: any = { ...dataDrawerForm };
+  const payload: Partial<DataRow> = { ...dataDrawerForm };
   const { error } =
     dataOperateType.value === 'add'
       ? await dictDataApi.add(payload)
@@ -423,7 +436,7 @@ async function onDataSubmit() {
   await dataGetData();
 }
 
-function createDataButtonEdit(row: any): any {
+function createDataButtonEdit(row: DataRow) {
   return h(
     'NButton',
     {
@@ -436,7 +449,7 @@ function createDataButtonEdit(row: any): any {
   );
 }
 
-function createDataButtonDelete(row: any): any {
+function createDataButtonDelete(row: DataRow) {
   return h(
     'NPopconfirm',
     {
@@ -477,15 +490,14 @@ async function onDataBatchDelete() {
 }
 
 function onDataSearch() {
-  dataPagination.page = 1;
-  dataGetData();
+  dataGetDataByPage();
 }
 function onDataReset() {
   Object.assign(dataQueryForm, {
     keyword: '',
     status: ''
   });
-  onDataSearch();
+  dataGetDataByPage();
 }
 
 watch(selectedDictTypeId, () => {
@@ -496,7 +508,7 @@ watch(selectedDictTypeId, () => {
 
 function handleDataAdd() {
   if (!selectedDictTypeId.value) {
-    message.warning('请先选择字典类型');
+    message.warning($t('page.system.dict.selectTypeFirst'));
     return;
   }
   dataHandleAdd();
@@ -505,222 +517,216 @@ function handleDataAdd() {
 
 <template>
   <div class="min-h-full">
-  <NSpace vertical :size="12">
-    <NTabs v-model:value="activeTab" type="line" animated>
-      <NTabPane name="type" tab="字典类型">
-        <NSpace vertical :size="12">
-          <NCard>
-            <NForm ref="typeFormRef" inline label-placement="left" label-width="auto" :model="typeQueryForm">
-              <NFormItem :label="$t('common.keywordSearch')">
-                <NInput
-                  v-model:value="typeQueryForm.keyword"
-                  clearable
-                  :placeholder="$t('common.keywordSearch')"
-                />
-              </NFormItem>
-              <NFormItem :label="$t('page.system.dict.form.status')">
-                <NSelect
-                  v-model:value="typeQueryForm.status"
-                  :options="[
-                    { label: '正常', value: '1' },
-                    { label: '停用', value: '0' }
-                  ]"
-                  clearable
-                />
-              </NFormItem>
-              <NFormItem>
-                <NSpace>
-                  <NButton type="primary" @click="onTypeSearch">
-                    <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-                  </NButton>
-                  <NButton @click="onTypeReset">
-                    <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-                  </NButton>
-                </NSpace>
-              </NFormItem>
-            </NForm>
-          </NCard>
+    <NSpace vertical :size="12">
+      <NTabs v-model:value="activeTab" type="line" animated>
+        <NTabPane name="type" :tab="$t('page.system.dict.typeTab')">
+          <NSpace vertical :size="12">
+            <NCard>
+              <NForm ref="typeFormRef" inline label-placement="left" label-width="auto" :model="typeQueryForm">
+                <NFormItem :label="$t('common.keywordSearch')">
+                  <NInput
+                    v-model:value="typeQueryForm.keyword"
+                    clearable
+                    :placeholder="$t('common.keywordSearch')"
+                  />
+                </NFormItem>
+                <NFormItem :label="$t('page.system.dict.form.status')">
+                  <NSelect
+                    v-model:value="typeQueryForm.status"
+                    :options="statusOptions"
+                    clearable
+                  />
+                </NFormItem>
+                <NFormItem>
+                  <NSpace>
+                    <NButton type="primary" @click="onTypeSearch">
+                      <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
+                    </NButton>
+                    <NButton @click="onTypeReset">
+                      <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
+                    </NButton>
+                  </NSpace>
+                </NFormItem>
+              </NForm>
+            </NCard>
 
-          <NCard :bordered="false" class="!mt-0">
-            <TableHeaderOperation
-              v-model:columns="typeColumnChecks"
-              :loading="typeLoading"
-              :disabled-delete="!typeCheckedRowKeys.length"
-              @add="typeHandleAdd"
-              @delete="onTypeBatchDelete"
-              @refresh="typeGetData"
+            <NCard :bordered="false" class="!mt-0">
+              <TableHeaderOperation
+                v-model:columns="typeColumnChecks"
+                :loading="typeLoading"
+                :disabled-delete="!typeCheckedRowKeys.length"
+                @add="typeHandleAdd"
+                @delete="onTypeBatchDelete"
+                @refresh="typeGetData"
+              />
+
+              <NDataTable
+                v-model:checked-row-keys="typeCheckedRowKeys"
+                :columns="typeColumns"
+                :data="typeData"
+                :loading="typeLoading"
+                :pagination="typeMobilePagination"
+                :scroll-x="1500"
+                :bordered="false"
+                striped
+              />
+            </NCard>
+          </NSpace>
+        </NTabPane>
+
+        <NTabPane name="data" :tab="$t('page.system.dict.dataTab')">
+          <NSpace vertical :size="12">
+            <NCard>
+              <NForm inline label-placement="left" label-width="auto">
+                <NFormItem :label="$t('page.system.dict.typeTab')" required>
+                  <NSelect
+                    v-model:value="selectedDictTypeId"
+                    :options="dictTypeOptions.map(t => ({ label: t.name, value: t.id }))"
+                    :placeholder="$t('page.system.dict.selectTypePlaceholder')"
+                    clearable
+                  />
+                </NFormItem>
+              </NForm>
+            </NCard>
+
+            <NCard>
+              <NForm ref="dataFormRef" inline label-placement="left" label-width="auto" :model="dataQueryForm">
+                <NFormItem :label="$t('common.keywordSearch')">
+                  <NInput
+                    v-model:value="dataQueryForm.keyword"
+                    clearable
+                    :placeholder="$t('common.keywordSearch')"
+                  />
+                </NFormItem>
+                <NFormItem :label="$t('page.system.dict.data.status')">
+                  <NSelect
+                    v-model:value="dataQueryForm.status"
+                    :options="statusOptions"
+                    clearable
+                  />
+                </NFormItem>
+                <NFormItem>
+                  <NSpace>
+                    <NButton type="primary" :disabled="!selectedDictTypeId" @click="onDataSearch">
+                      <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
+                    </NButton>
+                    <NButton @click="onDataReset">
+                      <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
+                    </NButton>
+                  </NSpace>
+                </NFormItem>
+              </NForm>
+            </NCard>
+
+            <NCard :bordered="false" class="!mt-0">
+              <TableHeaderOperation
+                v-model:columns="dataColumnChecks"
+                :loading="dataLoading"
+                :disabled-delete="!dataCheckedRowKeys.length || !selectedDictTypeId"
+                @add="handleDataAdd"
+                @delete="onDataBatchDelete"
+                @refresh="dataGetData"
+              />
+
+              <NDataTable
+                v-model:checked-row-keys="dataCheckedRowKeys"
+                :columns="dataColumns"
+                :data="dataData"
+                :loading="dataLoading"
+                :pagination="dataMobilePagination"
+                :scroll-x="1700"
+                :bordered="false"
+                striped
+              />
+            </NCard>
+          </NSpace>
+        </NTabPane>
+      </NTabs>
+    </NSpace>
+
+    <!-- 字典类型 抽屉 -->
+    <NDrawer v-model:show="typeDrawerVisible" :width="640" placement="right" :mask-closable="false">
+      <NDrawerContent
+        :title="typeOperateType === 'add' ? $t('common.add') : $t('common.edit')"
+        :closable="true"
+      >
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <NButton size="small" @click="typeCloseDrawer">{{ $t('common.close') }}</NButton>
+        </div>
+        <NForm ref="typeDrawerFormRef" label-placement="top" :model="typeDrawerForm" :rules="typeDrawerRules">
+          <NFormItem :label="$t('page.system.dict.form.name')" path="name">
+            <NInput v-model:value="typeDrawerForm.name" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.form.code')" path="code">
+            <NInput v-model:value="typeDrawerForm.code" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.form.status')" path="status">
+            <NRadioGroup v-model:value="typeDrawerForm.status">
+              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
+              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.form.remark')" path="remark">
+            <NInput v-model:value="typeDrawerForm.remark" type="textarea" :rows="3" />
+          </NFormItem>
+        </NForm>
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="typeCloseDrawer">{{ $t('common.cancel') }}</NButton>
+            <NButton type="primary" :loading="typeLoading" @click="onTypeSubmit">{{ $t('common.confirm') }}</NButton>
+          </NSpace>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
+
+    <!-- 字典数据 抽屉 -->
+    <NDrawer v-model:show="dataDrawerVisible" :width="640" placement="right" :mask-closable="false">
+      <NDrawerContent
+        :title="dataOperateType === 'add' ? $t('common.add') : $t('common.edit')"
+        :closable="true"
+      >
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+          <NButton size="small" @click="dataCloseDrawer">{{ $t('common.close') }}</NButton>
+        </div>
+        <NForm ref="dataDrawerFormRef" label-placement="top" :model="dataDrawerForm" :rules="dataDrawerRules">
+          <NFormItem :label="$t('page.system.dict.form.code')" path="dictCode">
+            <NSelect
+              v-model:value="dataDrawerForm.dictCode"
+              :options="dictTypeOptions.map(t => ({ label: t.name, value: t.code }))"
             />
-
-            <NDataTable
-              :columns="typeColumns"
-              :data="typeData"
-              :loading="typeLoading"
-              :pagination="typeMobilePagination"
-              v-model:checked-row-keys="typeCheckedRowKeys"
-              :scroll-x="1500"
-              :bordered="false"
-              striped
-            />
-          </NCard>
-        </NSpace>
-      </NTabPane>
-
-      <NTabPane name="data" tab="字典数据">
-        <NSpace vertical :size="12">
-          <NCard>
-            <NForm inline label-placement="left" label-width="auto">
-              <NFormItem label="字典类型" required>
-                <NSelect
-                  v-model:value="selectedDictTypeId"
-                  :options="dictTypeOptions.map(t => ({ label: t.name, value: t.id }))"
-                  placeholder="请选择字典类型"
-                  clearable
-                />
-              </NFormItem>
-            </NForm>
-          </NCard>
-
-          <NCard>
-            <NForm ref="dataFormRef" inline label-placement="left" label-width="auto" :model="dataQueryForm">
-              <NFormItem :label="$t('common.keywordSearch')">
-                <NInput
-                  v-model:value="dataQueryForm.keyword"
-                  clearable
-                  :placeholder="$t('common.keywordSearch')"
-                />
-              </NFormItem>
-              <NFormItem :label="$t('page.system.dict.data.status')">
-                <NSelect
-                  v-model:value="dataQueryForm.status"
-                  :options="[
-                    { label: '正常', value: '1' },
-                    { label: '停用', value: '0' }
-                  ]"
-                  clearable
-                />
-              </NFormItem>
-              <NFormItem>
-                <NSpace>
-                  <NButton type="primary" @click="onDataSearch" :disabled="!selectedDictTypeId">
-                    <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
-                  </NButton>
-                  <NButton @click="onDataReset">
-                    <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-                  </NButton>
-                </NSpace>
-              </NFormItem>
-            </NForm>
-          </NCard>
-
-          <NCard :bordered="false" class="!mt-0">
-            <TableHeaderOperation
-              v-model:columns="dataColumnChecks"
-              :loading="dataLoading"
-              :disabled-delete="!dataCheckedRowKeys.length || !selectedDictTypeId"
-              @add="handleDataAdd"
-              @delete="onDataBatchDelete"
-              @refresh="dataGetData"
-            />
-
-            <NDataTable
-              :columns="dataColumns"
-              :data="dataData"
-              :loading="dataLoading"
-              :pagination="dataMobilePagination"
-              v-model:checked-row-keys="dataCheckedRowKeys"
-              :scroll-x="1700"
-              :bordered="false"
-              striped
-            />
-          </NCard>
-        </NSpace>
-      </NTabPane>
-    </NTabs>
-  </NSpace>
-
-  <!-- 字典类型 抽屉 -->
-  <NDrawer v-model:show="typeDrawerVisible" :width="640" placement="right" :mask-closable="false">
-    <NDrawerContent
-      :title="typeOperateType === 'add' ? $t('common.add') : $t('common.edit')"
-      :closable="true"
-    >
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-        <NButton size="small" @click="typeCloseDrawer">{{ $t('common.close') }}</NButton>
-      </div>
-      <NForm ref="typeDrawerFormRef" label-placement="top" :model="typeDrawerForm" :rules="typeDrawerRules">
-        <NFormItem :label="$t('page.system.dict.form.name')" path="name">
-          <NInput v-model:value="typeDrawerForm.name" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.form.code')" path="code">
-          <NInput v-model:value="typeDrawerForm.code" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.form.status')" path="status">
-          <NRadioGroup v-model:value="typeDrawerForm.status">
-            <NRadio value="1">正常</NRadio>
-            <NRadio value="0">停用</NRadio>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.form.remark')" path="remark">
-          <NInput v-model:value="typeDrawerForm.remark" type="textarea" :rows="3" />
-        </NFormItem>
-      </NForm>
-      <template #footer>
-        <NSpace justify="end">
-          <NButton @click="typeCloseDrawer">{{ $t('common.cancel') }}</NButton>
-          <NButton type="primary" :loading="typeLoading" @click="onTypeSubmit">{{ $t('common.confirm') }}</NButton>
-        </NSpace>
-      </template>
-    </NDrawerContent>
-  </NDrawer>
-
-  <!-- 字典数据 抽屉 -->
-  <NDrawer v-model:show="dataDrawerVisible" :width="640" placement="right" :mask-closable="false">
-    <NDrawerContent
-      :title="dataOperateType === 'add' ? $t('common.add') : $t('common.edit')"
-      :closable="true"
-    >
-      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
-        <NButton size="small" @click="dataCloseDrawer">{{ $t('common.close') }}</NButton>
-      </div>
-      <NForm ref="dataDrawerFormRef" label-placement="top" :model="dataDrawerForm" :rules="dataDrawerRules">
-        <NFormItem label="字典编码" path="dictCode">
-          <NSelect
-            v-model:value="dataDrawerForm.dictCode"
-            :options="dictTypeOptions.map(t => ({ label: t.name, value: t.code }))"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.label')" path="label">
-          <NInput v-model:value="dataDrawerForm.label" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.value')" path="value">
-          <NInput v-model:value="dataDrawerForm.value" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.cssClass')" path="css_class">
-          <NInput v-model:value="dataDrawerForm.css_class" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.listClass')" path="list_class">
-          <NInput v-model:value="dataDrawerForm.list_class" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.isDefault')" path="is_default">
-          <NSwitch v-model:value="dataDrawerForm.is_default" />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.status')" path="status">
-          <NRadioGroup v-model:value="dataDrawerForm.status">
-            <NRadio value="1">正常</NRadio>
-            <NRadio value="0">停用</NRadio>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem :label="$t('page.system.dict.data.remark')" path="remark">
-          <NInput v-model:value="dataDrawerForm.remark" type="textarea" :rows="3" />
-        </NFormItem>
-      </NForm>
-      <template #footer>
-        <NSpace justify="end">
-          <NButton @click="dataCloseDrawer">{{ $t('common.cancel') }}</NButton>
-          <NButton type="primary" :loading="dataLoading" @click="onDataSubmit">{{ $t('common.confirm') }}</NButton>
-        </NSpace>
-      </template>
-    </NDrawerContent>
-  </NDrawer>
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.label')" path="label">
+            <NInput v-model:value="dataDrawerForm.label" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.value')" path="value">
+            <NInput v-model:value="dataDrawerForm.value" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.cssClass')" path="css_class">
+            <NInput v-model:value="dataDrawerForm.css_class" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.listClass')" path="list_class">
+            <NInput v-model:value="dataDrawerForm.list_class" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.isDefault')" path="is_default">
+            <NSwitch v-model:value="dataDrawerForm.is_default" />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.status')" path="status">
+            <NRadioGroup v-model:value="dataDrawerForm.status">
+              <NRadio value="1">{{ $t('page.system.common.enabled') }}</NRadio>
+              <NRadio value="0">{{ $t('page.system.common.disabled') }}</NRadio>
+            </NRadioGroup>
+          </NFormItem>
+          <NFormItem :label="$t('page.system.dict.data.remark')" path="remark">
+            <NInput v-model:value="dataDrawerForm.remark" type="textarea" :rows="3" />
+          </NFormItem>
+        </NForm>
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="dataCloseDrawer">{{ $t('common.cancel') }}</NButton>
+            <NButton type="primary" :loading="dataLoading" @click="onDataSubmit">{{ $t('common.confirm') }}</NButton>
+          </NSpace>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>

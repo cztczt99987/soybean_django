@@ -337,6 +337,10 @@ const local: App.I18n.Schema = {
       },
       dict: {
         title: '字典管理',
+        typeTab: '字典类型',
+        dataTab: '字典数据',
+        selectTypePlaceholder: '请选择字典类型',
+        selectTypeFirst: '请先选择字典类型',
         form: { name: '字典名称', code: '字典编码', status: '状态', remark: '备注' },
         data: { label: '标签', value: '键值', cssClass: '样式属性', listClass: '回显样式', isDefault: '是否默认', status: '状态', remark: '备注' }
       },
@@ -346,8 +350,26 @@ const local: App.I18n.Schema = {
       },
       log: {
         title: '日志管理',
-        fields: { username: '账号', module: '模块', description: '描述', operationType: '操作类型', method: '方法', url: 'URL', ip: 'IP', status: '状态', costTime: '耗时', operatedAt: '操作时间' },
-        action: { clean: '清理N天前' }
+        fields: { username: '账号', module: '模块', description: '描述', operationType: '操作类型', method: '方法', url: 'URL', ip: 'IP', status: '状态', costTime: '耗时', operatedAt: '操作时间', dateRange: '时间范围' },
+        action: { clean: '清理N天前', cleanTitle: '清理日志', cleanDays: '清理多少天前的日志' }
+      },
+      common: {
+        createdAt: '创建时间',
+        enabled: '正常',
+        disabled: '停用',
+        success: '成功',
+        failure: '失败',
+        gender: { unknown: '未知', male: '男', female: '女' },
+        valueType: { S: '字符串', N: '数字', B: '布尔', J: 'JSON' },
+        menuType: { dir: '目录', menu: '菜单', button: '按钮' },
+        dataScope: { all: '全部数据权限', custom: '自定义数据权限', dept: '本部门数据权限', deptAndChildren: '本部门及以下数据权限', self: '仅本人数据权限' },
+        operationType: { other: '其它', create: '新增', update: '修改', remove: '删除', grant: '授权', export: '导出', import: '导入', login: '登录', logout: '登出' },
+        resetPwdSuccess: '密码重置成功',
+        resetPwdConfirm: '确认重置该用户的密码吗？',
+        changeStatusSuccess: '状态修改成功',
+        assignMenusSuccess: '菜单分配成功',
+        cleanSuccess: '清理成功',
+        dateRange: '时间范围'
       }
     }
   },

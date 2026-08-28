@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { h, reactive, ref } from 'vue';
-import { useMessage, useDialog, type FormInst } from 'naive-ui';
+import { computed, h, reactive, ref } from 'vue';
+import { NTag, useDialog, useMessage, type FormInst } from 'naive-ui';
+import type { FlatResponseData } from '@sa/axios';
 import { $t } from '@/locales';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
 import { logApi } from '@/service/api';
@@ -28,28 +29,39 @@ const queryForm = reactive<{
 const cleanDays = ref<number>(30);
 const cleanDialogVisible = ref(false);
 
-const operationTypeOptions = [
-  { label: '新增', value: '1' },
-  { label: '修改', value: '2' },
-  { label: '删除', value: '3' },
-  { label: '查询', value: '4' },
-  { label: '导出', value: '5' },
-  { label: '导入', value: '6' },
-  { label: '登录', value: '7' },
-  { label: '登出', value: '8' },
-  { label: '其他', value: '9' }
-];
+const operationTypeOptions = computed(() => [
+  { label: $t('page.system.common.operationType.other'), value: '1' },
+  { label: $t('page.system.common.operationType.create'), value: '2' },
+  { label: $t('page.system.common.operationType.update'), value: '3' },
+  { label: $t('page.system.common.operationType.remove'), value: '4' },
+  { label: $t('page.system.common.operationType.grant'), value: '5' },
+  { label: $t('page.system.common.operationType.export'), value: '6' },
+  { label: $t('page.system.common.operationType.import'), value: '7' },
+  { label: $t('page.system.common.operationType.login'), value: '8' },
+  { label: $t('page.system.common.operationType.logout'), value: '9' }
+]);
 
-let tbl: any;
-tbl = useNaivePaginatedTable({
+const logStatusOptions = computed(() => [
+  { label: $t('page.system.common.success'), value: '1' },
+  { label: $t('page.system.common.failure'), value: '0' }
+]);
+
+type Row = Api.System.OperationLog;
+type Resp = FlatResponseData<App.Service.Response<unknown>, Api.System.ListResp<Row>>;
+type TableInst = ReturnType<typeof useNaivePaginatedTable<Resp, Row>>;
+
+// 先声明为 undefined 再赋值：api 闭包首次同步调用时 tbl 尚未就绪，需可选链兜底（不能改 const，否则 TDZ）
+let tbl: TableInst | undefined;
+// eslint-disable-next-line prefer-const
+tbl = useNaivePaginatedTable<Resp, Row>({
   api: () => {
-    const page = tbl?.pagination?.page ?? 1;
-    const pageSize = tbl?.pagination?.pageSize ?? 10;
-    const params: any = { current: page, size: pageSize };
-    Object.entries(queryForm).forEach(([k, v]) => {
-      if (k === 'dateRange') return;
-      if (v !== '' && v !== null && v !== undefined) params[k] = v;
-    });
+    const params: Api.System.SearchParams = {
+      current: tbl?.pagination?.page ?? 1,
+      size: tbl?.pagination?.pageSize ?? 10,
+      keyword: queryForm.keyword || undefined,
+      operationType: queryForm.operationType || undefined,
+      status: queryForm.status || undefined
+    };
     if (queryForm.dateRange && queryForm.dateRange.length === 2) {
       params.beginTime = queryForm.dateRange[0];
       params.endTime = queryForm.dateRange[1];
@@ -59,13 +71,10 @@ tbl = useNaivePaginatedTable({
   columns: () => [
     { type: 'selection', width: 60 },
     {
-      title: '#',
+      title: $t('common.index'),
       key: '__index__',
       width: 64,
-      render: (...args: any[]): any => {
-        const index = args.length >= 3 ? args[2] : args[1];
-        return ((tbl?.pagination?.page ?? 1) - 1) * (tbl?.pagination?.pageSize ?? 10) + index + 1;
-      }
+      render: (_row, rowIndex) => ((tbl?.pagination?.page ?? 1) - 1) * (tbl?.pagination?.pageSize ?? 10) + rowIndex + 1
     },
     { title: $t('page.system.log.fields.username'), key: 'username', width: 120 },
     { title: $t('page.system.log.fields.module'), key: 'module', width: 120 },
@@ -74,7 +83,7 @@ tbl = useNaivePaginatedTable({
       title: $t('page.system.log.fields.operationType'),
       key: 'operation_type',
       width: 100,
-      render: (row: any) => operationTypeOptions.find(o => o.value === row.operation_type)?.label || '-'
+      render: row => operationTypeOptions.value.find(o => o.value === row.operation_type)?.label || '-'
     },
     { title: $t('page.system.log.fields.method'), key: 'method', width: 100 },
     { title: $t('page.system.log.fields.url'), key: 'request_url', width: 240, ellipsis: { tooltip: true } },
@@ -83,22 +92,20 @@ tbl = useNaivePaginatedTable({
       title: $t('page.system.log.fields.status'),
       key: 'status',
       width: 100,
-      render: (row: any) =>
+      render: row =>
         h(
-          'span',
+          NTag,
+          { size: 'small', type: row.status === '1' ? 'success' : 'error' },
           {
-            style: {
-              color: row.status === '1' ? '#18a058' : '#d03050'
-            }
-          },
-          row.status === '1' ? '成功' : '失败'
+            default: () => (row.status === '1' ? $t('page.system.common.success') : $t('page.system.common.failure'))
+          }
         )
     },
     {
       title: $t('page.system.log.fields.costTime'),
       key: 'cost_time',
       width: 100,
-      render: (row: any) => `${row.cost_time} ms`
+      render: row => `${row.cost_time} ms`
     },
     { title: $t('page.system.log.fields.operatedAt'), key: 'operated_at', width: 180 },
     {
@@ -106,27 +113,17 @@ tbl = useNaivePaginatedTable({
       key: 'actions',
       width: 120,
       fixed: 'right',
-      render: (row: any): any =>
-        h('div', { style: { display: 'flex', gap: '8px' } }, [createButtonDelete(row)])
+      render: row => h('div', { style: { display: 'flex', gap: '8px' } }, [createButtonDelete(row)])
     }
   ],
-  transform: defaultTransform as any
-} as any);
+  transform: defaultTransform
+});
 
-const loading = tbl.loading;
-const data = tbl.data;
-const columns = tbl.columns;
-const columnChecks = tbl.columnChecks;
-const getData = tbl.getData;
-const pagination = tbl.pagination;
-const mobilePagination = tbl.mobilePagination;
+const { data, loading, columns, columnChecks, getData, getDataByPage, mobilePagination } = tbl;
 
-const ops: any = (useTableOperate as any)(data, 'id', getData);
-const checkedRowKeys = ops.checkedRowKeys;
-const onBatchDeleted = ops.onBatchDeleted;
-const onDeleted = ops.onDeleted;
+const { checkedRowKeys, onBatchDeleted, onDeleted } = useTableOperate(data, 'id', getData);
 
-function createButtonDelete(row: any): any {
+function createButtonDelete(row: Row) {
   return h(
     'NPopconfirm',
     {
@@ -174,15 +171,14 @@ function openCleanDialog() {
 async function onCleanSubmit() {
   const { error } = await logApi.clean(cleanDays.value);
   if (!error) {
-    message.success(`已清理 ${cleanDays.value} 天前的日志`);
+    message.success($t('page.system.common.cleanSuccess'));
     cleanDialogVisible.value = false;
     await getData();
   }
 }
 
 function onSearch() {
-  pagination.page = 1;
-  getData();
+  getDataByPage();
 }
 function onReset() {
   Object.assign(queryForm, {
@@ -193,104 +189,101 @@ function onReset() {
     endTime: null,
     dateRange: null
   });
-  onSearch();
+  getDataByPage();
 }
 </script>
 
 <template>
   <div class="min-h-full">
-  <NSpace vertical :size="12">
-    <NCard>
-      <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
-        <NFormItem :label="$t('common.keywordSearch')">
-          <NInput
-            v-model:value="queryForm.keyword"
-            clearable
-            :placeholder="$t('common.keywordSearch')"
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.log.fields.operationType')">
-          <NSelect
-            v-model:value="queryForm.operationType"
-            :options="operationTypeOptions"
-            clearable
-          />
-        </NFormItem>
-        <NFormItem :label="$t('page.system.log.fields.status')">
-          <NSelect
-            v-model:value="queryForm.status"
-            :options="[
-              { label: '成功', value: '1' },
-              { label: '失败', value: '0' }
-            ]"
-            clearable
-          />
-        </NFormItem>
-        <NFormItem label="时间范围">
-          <NDatePicker
-            v-model:formatted-value="queryForm.dateRange"
-            type="daterange"
-            value-format="yyyy-MM-dd"
-            clearable
-          />
-        </NFormItem>
-        <NFormItem>
-          <NSpace>
-            <NButton type="primary" @click="onSearch">
-              <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
+    <NSpace vertical :size="12">
+      <NCard>
+        <NForm ref="formRef" inline label-placement="left" label-width="auto" :model="queryForm">
+          <NFormItem :label="$t('common.keywordSearch')">
+            <NInput
+              v-model:value="queryForm.keyword"
+              clearable
+              :placeholder="$t('common.keywordSearch')"
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.log.fields.operationType')">
+            <NSelect
+              v-model:value="queryForm.operationType"
+              :options="operationTypeOptions"
+              clearable
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.log.fields.status')">
+            <NSelect
+              v-model:value="queryForm.status"
+              :options="logStatusOptions"
+              clearable
+            />
+          </NFormItem>
+          <NFormItem :label="$t('page.system.log.fields.dateRange')">
+            <NDatePicker
+              v-model:formatted-value="queryForm.dateRange"
+              type="daterange"
+              value-format="yyyy-MM-dd"
+              clearable
+            />
+          </NFormItem>
+          <NFormItem>
+            <NSpace>
+              <NButton type="primary" @click="onSearch">
+                <template #icon><icon-mdi-magnify class="text-icon" /></template>{{ $t('common.search') }}
+              </NButton>
+              <NButton @click="onReset">
+                <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
+              </NButton>
+            </NSpace>
+          </NFormItem>
+        </NForm>
+      </NCard>
+
+      <NCard :bordered="false" class="!mt-0">
+        <TableHeaderOperation
+          v-model:columns="columnChecks"
+          :loading="loading"
+          :disabled-delete="!checkedRowKeys.length"
+          @delete="onBatchDelete"
+          @refresh="getData"
+        >
+          <template #prefix>
+            <NButton size="small" ghost type="warning" @click="openCleanDialog">
+              <template #icon>
+                <icon-mdi-broom class="text-icon" />
+              </template>
+              {{ $t('page.system.log.action.clean') }}
             </NButton>
-            <NButton @click="onReset">
-              <template #icon><icon-mdi-refresh class="text-icon" /></template>{{ $t('common.reset') }}
-            </NButton>
-          </NSpace>
+          </template>
+          <template #default></template>
+        </TableHeaderOperation>
+
+        <NDataTable
+          v-model:checked-row-keys="checkedRowKeys"
+          :columns="columns"
+          :data="data"
+          :loading="loading"
+          :pagination="mobilePagination"
+          :scroll-x="1900"
+          :bordered="false"
+          striped
+        />
+      </NCard>
+    </NSpace>
+
+    <NModal v-model:show="cleanDialogVisible" preset="card" :title="$t('page.system.log.action.cleanTitle')" style="width: 420px">
+      <NForm label-placement="top">
+        <NFormItem :label="$t('page.system.log.action.cleanDays')">
+          <NInputNumber v-model:value="cleanDays" :min="1" :max="3650" />
         </NFormItem>
       </NForm>
-    </NCard>
-
-    <NCard :bordered="false" class="!mt-0">
-      <TableHeaderOperation
-        v-model:columns="columnChecks"
-        :loading="loading"
-        :disabled-delete="!checkedRowKeys.length"
-        @delete="onBatchDelete"
-        @refresh="getData"
-      >
-        <template #prefix>
-          <NButton size="small" ghost type="warning" @click="openCleanDialog">
-            <template #icon>
-              <icon-mdi-broom class="text-icon" />
-            </template>
-            {{ $t('page.system.log.action.clean') }}
-          </NButton>
-        </template>
-        <template #default></template>
-      </TableHeaderOperation>
-
-      <NDataTable
-        :columns="columns"
-        :data="data"
-        :loading="loading"
-        :pagination="mobilePagination"
-        v-model:checked-row-keys="checkedRowKeys"
-        :scroll-x="1900"
-        :bordered="false"
-        striped
-      />
-    </NCard>
-  </NSpace>
-
-  <NModal v-model:show="cleanDialogVisible" preset="card" title="清理日志" style="width: 420px">
-    <NForm label-placement="top">
-      <NFormItem label="清理多少天前的日志">
-        <NInputNumber v-model:value="cleanDays" :min="1" :max="3650" />
-      </NFormItem>
-    </NForm>
-    <template #footer>
-      <NSpace justify="end">
-        <NButton @click="cleanDialogVisible = false">{{ $t('common.cancel') }}</NButton>
-        <NButton type="primary" :loading="loading" @click="onCleanSubmit">{{ $t('common.confirm') }}</NButton>
-      </NSpace>
-    </template>
-  </NModal>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="cleanDialogVisible = false">{{ $t('common.cancel') }}</NButton>
+          <NButton type="primary" :loading="loading" @click="onCleanSubmit">{{ $t('common.confirm') }}</NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>
