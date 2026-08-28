@@ -54,32 +54,33 @@ def _menu_to_tree_nodes(menus, parent_id=None):
 
 class ConstantRoutesView(APIView):
     def get(self, request):
-        # component 必须匹配前端 views 映射键（login/403/404/500），
-        # path 必须与前端 routeMap 一致，否则 transform 会丢弃路由导致跳转失败
+        # 与前端 elegant-router 生成的静态常量路由保持一致：
+        # 单级路由 component 必须是 "layout.blank$view.<name>" 格式
         constants = [
-            {
-                "name": "login",
-                "path": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
-                "component": "view.login",
-                "meta": {"title": "login", "i18nKey": "route.login", "constant": True},
-            },
             {
                 "name": "403",
                 "path": "/403",
-                "component": "view.403",
-                "meta": {"title": "403", "constant": True},
+                "component": "layout.blank$view.403",
+                "meta": {"title": "403", "i18nKey": "route.403", "constant": True, "hideInMenu": True},
             },
             {
                 "name": "404",
                 "path": "/404",
-                "component": "view.404",
-                "meta": {"title": "404", "constant": True},
+                "component": "layout.blank$view.404",
+                "meta": {"title": "404", "i18nKey": "route.404", "constant": True, "hideInMenu": True},
             },
             {
                 "name": "500",
                 "path": "/500",
-                "component": "view.500",
-                "meta": {"title": "500", "constant": True},
+                "component": "layout.blank$view.500",
+                "meta": {"title": "500", "i18nKey": "route.500", "constant": True, "hideInMenu": True},
+            },
+            {
+                "name": "login",
+                "path": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
+                "component": "layout.blank$view.login",
+                "props": True,
+                "meta": {"title": "login", "i18nKey": "route.login", "constant": True, "hideInMenu": True},
             },
         ]
         return Response(ok(constants))
