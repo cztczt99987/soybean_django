@@ -188,9 +188,13 @@ class CacheListView(APIView):
             try:
                 key_type = client.type(key)
                 ttl = client.ttl(key)
-                size = client.memory_usage(key) or 0
             except Exception:  # noqa: BLE001
                 continue
+            # MEMORY USAGE 为 Redis 4.0+ 命令（Windows 旧版 3.x 不支持），失败时回退 0
+            try:
+                size = client.memory_usage(key) or 0
+            except Exception:  # noqa: BLE001
+                size = 0
             records.append(
                 {
                     "key": key,

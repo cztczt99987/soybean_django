@@ -221,7 +221,7 @@ class Command(BaseCommand):
             except BaseException as exc:
                 self.stderr.write(f"[migrate] 出错: {exc}")
                 return
-            self.stdout.write(f"[{self._now()}] ✓ 迁移完成。")
+            self.stdout.write(f"[{self._now()}] [OK] 迁移完成。")
         else:
             # 没有新迁移, 仍轻量跑一下 migrate 以保证 django_migrations 表存在/对齐
             try:
