@@ -368,11 +368,6 @@ class Command(BaseCommand):
 
     # -------------------- 参数 --------------------
     def _seed_config(self):
-        self._cfg("主框架页-默认皮肤样式名称", "sys.index.skinName", "skin-blue", value_type="S", is_system=True)
-        self._cfg("用户管理-账号初始密码", "sys.user.initPassword", "123456", value_type="S", is_system=True)
-        self._cfg("主框架页-侧边栏主题", "sys.index.sideTheme", "theme-dark", value_type="S", is_system=True)
-        self._cfg("账号自助-是否开启用户注册", "sys.account.registerUser", "false", value_type="B", is_system=True)
-        self._cfg("账号自助-是否开启验证码", "sys.account.captchaEnabled", "true", value_type="B", is_system=True)
         self._cfg("系统名称", "sys.system.name", "Soybean Django 管理系统", value_type="S", is_system=True)
 
     # -------------------- 角色-菜单 --------------------

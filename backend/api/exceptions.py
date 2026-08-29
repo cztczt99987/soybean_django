@@ -42,8 +42,8 @@ def exception_handler(exc, context):
     msg = _join_msg(detail) or "请求失败"
     code = ERROR_CODE
     http_code = response.status_code
-    if isinstance(exc, (NotAuthenticated, AuthenticationFailed)):
+    if isinstance(exc, (NotAuthenticated, AuthenticationFailed, PermissionDenied)):
+        # 未配置 DRF 认证类时 401 会被降级为 403, 这里强制回 401 (前端依赖其判断登录态)
         code = AUTH_CODE
-    elif isinstance(exc, PermissionDenied):
-        code = AUTH_CODE
+        http_code = http_status.HTTP_401_UNAUTHORIZED
     return Response(fail(msg, code=code), status=http_code)

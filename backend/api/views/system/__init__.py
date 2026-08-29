@@ -1,6 +1,6 @@
 """views.system 子模块聚合。"""
 
-from .config import ConfigViewSet
+from .config import ConfigViewSet, SystemNameView
 from .dept import DepartmentViewSet
 from .dict import DictDataViewSet, DictTypeViewSet
 from .log import OperationLogViewSet
@@ -18,5 +18,6 @@ __all__ = [
     "DictTypeViewSet",
     "DictDataViewSet",
     "ConfigViewSet",
+    "SystemNameView",
     "OperationLogViewSet",
 ]

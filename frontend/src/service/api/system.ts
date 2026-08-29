@@ -151,6 +151,8 @@ export const configApi = {
     list<Api.System.ListResp<Api.System.Config>>('/system/config/', params),
   byKey: (code: string) =>
     request<Api.System.Config | null>({ url: `/system/config/by-key/?code=${encodeURIComponent(code)}` }),
+  /** 系统名称（公开接口，无需登录） */
+  fetchSystemName: () => request<{ name: string }>({ url: '/system/config/system-name/' }),
   add: (data: Partial<Api.System.Config>) => add<Api.System.Config>('/system/config/', data),
   update: (id: number, data: Partial<Api.System.Config>) =>
     update<Api.System.Config>('/system/config/', id, data),

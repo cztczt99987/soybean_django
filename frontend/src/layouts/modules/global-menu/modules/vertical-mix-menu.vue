@@ -100,7 +100,7 @@ watch(
           :style="{ width: showDrawer ? themeStore.sider.mixChildMenuWidth + 'px' : '0px' }"
         >
           <header class="flex-y-center justify-between px-12px" :style="{ height: themeStore.header.height + 'px' }">
-            <h2 class="text-16px text-primary font-bold">{{ $t('system.title') }}</h2>
+            <h2 class="text-16px text-primary font-bold">{{ appStore.systemName || $t('system.title') }}</h2>
             <PinToggler
               :pin="appStore.mixSiderFixed"
               :class="{ 'text-white:88 !hover:text-white': inverted }"

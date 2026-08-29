@@ -340,6 +340,21 @@ declare namespace App {
         edit: string;
         warning: string;
         error: string;
+        iconPicker: {
+          title: string;
+          search: string;
+          clear: string;
+          categories: {
+            common: string;
+            system: string;
+            user: string;
+            file: string;
+            edit: string;
+            chart: string;
+            message: string;
+            navigate: string;
+          };
+        };
         index: string;
         keywordSearch: string;
         logout: string;

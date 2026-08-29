@@ -40,6 +40,7 @@ from .system import (
     OperationLogViewSet,
     PostViewSet,
     RoleViewSet,
+    SystemNameView,
     UserViewSet,
 )
 
@@ -77,5 +78,6 @@ __all__ = [
     "DictTypeViewSet",
     "DictDataViewSet",
     "ConfigViewSet",
+    "SystemNameView",
     "OperationLogViewSet",
 ]

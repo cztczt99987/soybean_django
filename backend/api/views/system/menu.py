@@ -22,7 +22,7 @@ class MenuViewSet(_CRUDMixin, AuthenticatedViewSet):
 
     @action(detail=False, methods=["get"], url_path="tree")
     def tree(self, request):
-        qs = self._apply_query_filters(Menu.objects.filter(is_deleted=False), request)
+        qs = self._apply_query_filters(Menu.objects.filter(is_deleted=False), request).order_by("order", "id")
         all_items = MenuFlatSerializer(qs, many=True).data
         for d in all_items:
             d["children"] = []

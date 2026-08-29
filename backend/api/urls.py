@@ -15,6 +15,8 @@ router.register("system/config", views.ConfigViewSet, basename="system-config")
 router.register("system/log", views.OperationLogViewSet, basename="system-log")
 
 urlpatterns = [
+    # 公开接口：须注册在 router 之前，避免被 /system/config/{pk}/ 详情路由捕获
+    path("system/config/system-name/", views.SystemNameView.as_view(), name="system-config-name"),
     path("", include(router.urls)),
     path("health", views.HealthCheckView.as_view(), name="health"),
     path("auth/login", views.LoginView.as_view(), name="login"),

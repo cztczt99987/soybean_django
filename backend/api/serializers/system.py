@@ -42,6 +42,13 @@ class DictDataSerializer(serializers.ModelSerializer):
                 attrs["dict_type"] = DictType.objects.get(code=code, is_deleted=False)
             except DictType.DoesNotExist as exc:
                 raise serializers.ValidationError(f"字典类型 {code} 不存在") from exc
+        # unique_together 含未序列化的 dict_type 字段时 DRF 会跳过校验, 这里手动查重
+        dict_type = attrs.get("dict_type")
+        value = attrs.get("value")
+        if dict_type and value and DictData.objects.filter(
+            dict_type=dict_type, value=value, is_deleted=False
+        ).exists():
+            raise serializers.ValidationError(f"该字典类型下键值 {value} 已存在")
         return attrs
 
 

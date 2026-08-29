@@ -28,6 +28,21 @@ const local: App.I18n.Schema = {
     edit: '编辑',
     warning: '警告',
     error: '错误',
+    iconPicker: {
+      title: '选择图标',
+      search: '搜索图标',
+      clear: '清空',
+      categories: {
+        common: '常用',
+        system: '系统',
+        user: '用户',
+        file: '文件',
+        edit: '编辑',
+        chart: '图表',
+        message: '通讯',
+        navigate: '导航'
+      }
+    },
     index: '序号',
     keywordSearch: '请输入关键词搜索',
     logout: '退出登录',

@@ -6,6 +6,7 @@ import { useFormRules, useNaiveForm } from '@/hooks/common/form';
 import { enableStatusOptions, menuTypeOptions } from '@/constants/business';
 import { translateOptions } from '@/utils/common';
 import { menuApi } from '@/service/api';
+import IconPicker from '@/components/custom/icon-picker.vue';
 
 defineOptions({ name: 'MenuOperateModal' });
 
@@ -169,7 +170,7 @@ watch(visible, () => {
         <NInput v-model:value="model.permission" />
       </NFormItem>
       <NFormItem :label="$t('page.system.menu.form.icon')" path="icon">
-        <NInput v-model:value="model.icon" />
+        <IconPicker v-model:icon="model.icon" />
       </NFormItem>
       <NFormItem :label="$t('page.system.menu.form.type')" path="menu_type">
         <NRadioGroup v-model:value="model.menu_type">

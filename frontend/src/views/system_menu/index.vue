@@ -1,6 +1,7 @@
 <script setup lang="tsx">
 import { computed, ref } from 'vue';
 import { NButton, NPopconfirm, NTag } from 'naive-ui';
+import type { DataTableRowKey } from 'naive-ui';
 import { $t } from '@/locales';
 import { useAppStore } from '@/store/modules/app';
 import SvgIcon from '@/components/custom/svg-icon.vue';
@@ -23,6 +24,13 @@ const loading = ref(false);
 
 const treeData = ref<Api.System.Menu[]>([]);
 
+/** 展开的行 key，加载后默认展开全部层级以体现上下级 */
+const expandedRowKeys = ref<DataTableRowKey[]>([]);
+
+function collectAllRowKeys(items: Api.System.Menu[]): DataTableRowKey[] {
+  return items.flatMap(item => [item.id, ...collectAllRowKeys(item.children || [])]);
+}
+
 async function getData() {
   loading.value = true;
 
@@ -31,10 +39,15 @@ async function getData() {
 
     if (!error) {
       treeData.value = resData || [];
+      expandedRowKeys.value = collectAllRowKeys(treeData.value);
     }
   } finally {
     loading.value = false;
   }
+}
+
+function handleExpandedRowKeysUpdate(keys: DataTableRowKey[]) {
+  expandedRowKeys.value = keys;
 }
 
 function filterTree(items: Api.System.Menu[], keyword: string, status: EnableStatus | ''): Api.System.Menu[] {
@@ -108,8 +121,8 @@ const columns = computed<NaiveUI.TableColumn<Api.System.Menu>[]>(() => [
   {
     key: 'name',
     title: $t('page.system.menu.form.name'),
-    align: 'center',
-    width: 160
+    align: 'left',
+    width: 220
   },
   {
     key: 'title',
@@ -294,6 +307,8 @@ getData();
         :loading="loading"
         :row-key="row => row.id"
         children-key="children"
+        :expanded-row-keys="expandedRowKeys"
+        @update:expanded-row-keys="handleExpandedRowKeysUpdate"
         class="sm:h-full"
       />
       <MenuOperateModal

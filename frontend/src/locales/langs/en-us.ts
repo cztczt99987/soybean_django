@@ -28,6 +28,21 @@ const local: App.I18n.Schema = {
     edit: 'Edit',
     warning: 'Warning',
     error: 'Error',
+    iconPicker: {
+      title: 'Select Icon',
+      search: 'Search icon',
+      clear: 'Clear',
+      categories: {
+        common: 'Common',
+        system: 'System',
+        user: 'User',
+        file: 'File',
+        edit: 'Edit',
+        chart: 'Chart',
+        message: 'Message',
+        navigate: 'Navigation'
+      }
+    },
     index: 'Index',
     keywordSearch: 'Please enter keyword',
     logout: 'Logout',
