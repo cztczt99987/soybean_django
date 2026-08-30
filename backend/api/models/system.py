@@ -11,8 +11,8 @@ from __future__ import annotations
 from django.db import models
 from django.utils import timezone
 
-from .auth import User
 from .base import BaseModel
+from .rbac import User
 
 
 class DictType(BaseModel):

@@ -5,9 +5,10 @@ Django 在扫描模型时会加载 models 包下 __init__ 中的所有导入，
 两种形式都能工作，makemigrations 检测不到任何变更。
 """
 
-from .auth import Department, Menu, Post, Role, User
 from .base import BaseModel
+from .rbac import Department, Menu, Post, Role, User
 from .system import Config, DictData, DictType, OperationLog
+from .tasks import SchedulerNode, TaskExecutionLog, TaskJob
 
 __all__ = [
     "BaseModel",
@@ -20,4 +21,7 @@ __all__ = [
     "DictData",
     "Config",
     "OperationLog",
+    "TaskJob",
+    "TaskExecutionLog",
+    "SchedulerNode",
 ]

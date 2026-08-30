@@ -70,6 +70,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
     'api',
 ]
 
@@ -126,10 +128,12 @@ else:
             f"不支持的 DB_ENGINE={_DB_ENGINE!r}; 可选: sqlite3 / mysql / postgresql"
         )
 
+    # charset 选项仅 MySQL 支持; PostgreSQL 默认 UTF-8, 传了会报 invalid dsn
     _options = {}
-    _charset = env("DB_OPTIONS_CHARSET")
-    if _charset:
-        _options["charset"] = _charset
+    if _driver == "django.db.backends.mysql":
+        _charset = env("DB_OPTIONS_CHARSET")
+        if _charset:
+            _options["charset"] = _charset
 
     DATABASES = {
         "default": {
@@ -198,7 +202,35 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'EXCEPTION_HANDLER': 'api.exceptions.exception_handler',
     'DEFAULT_PAGINATION_CLASS': None,
+    # OpenAPI Schema 自动生成（Swagger 文档）
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+# Swagger / OpenAPI 文档配置
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Soybean Django API 文档',
+    'DESCRIPTION': '基于 Django + DRF 的后台管理系统接口文档，涵盖系统管理、监控管理、接口管理等模块。',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # 使用 sidecar 本地静态资源，内网/离线环境也可正常访问 Swagger UI
+    'SWAGGER_UI_DIST': 'SIDECAR',
+    'SWAGGER_UI_FAVICON_DIST': 'SIDECAR',
+    # 自定义认证直接读取 Authorization 请求头，DRF 认证类无法自动识别，
+    # 这里全局声明 Bearer 安全方案，使 Swagger UI 显示 Authorize 按钮
+    'SECURITY': [{'bearerAuth': []}],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
+}
+
+# 允许同源 iframe 嵌入（前端 Swagger 文档页面通过代理以 iframe 方式内嵌）
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 # Cache / Redis
 # 当 REDIS_URL 有值时启用 Redis 缓存; 否则使用本地内存缓存, 不依赖外部服务

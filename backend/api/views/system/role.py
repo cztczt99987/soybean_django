@@ -28,8 +28,14 @@ class RoleViewSet(_CRUDMixin, AuthenticatedViewSet):
     @action(detail=True, methods=["post"], url_path="assign-menus")
     def assign_menus(self, request, pk=None):
         role = self._base_qs().get(pk=pk)
-        menu_ids = (request.data or {}).get("menuIds") or []
+        data = request.data or {}
+        menu_ids = data.get("menuIds") or []
         role.menus.set(menu_ids)
+        # 数据权限随权限分配面板一并提交（可选）
+        data_scope = data.get("dataScope")
+        if data_scope:
+            role.data_scope = data_scope
+            role.save(update_fields=["data_scope"])
         bump_routes_version()
-        _log_operation(request, self.module_name, f"分配菜单权限: {role.name}", op_type="5")
+        _log_operation(request, self.module_name, f"分配权限: {role.name}", op_type="5")
         return Response(ok(True))

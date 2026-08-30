@@ -20,12 +20,14 @@ from django.db import models as db_models
 from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView  # noqa: F401  由子模块直接使用
 
 from ..models import OperationLog, User
+from ..serializers.schemas import ListQuerySerializer
 
 # ===================== 响应常量 =====================
 
@@ -239,6 +241,14 @@ class _CRUDMixin:
 
     filter_map: dict[str, str] = {}
 
+    @property
+    def queryset(self):
+        """供 drf-spectacular 推断路径参数类型与分页参数（业务逻辑请使用 _base_qs()）。"""
+        try:
+            return self._base_qs()
+        except Exception:  # noqa: BLE001
+            return None
+
     def _after_mutation(self, instance=None):
         """数据变更后的钩子，子类按需覆写（如失效缓存）。"""
 
@@ -275,6 +285,11 @@ class _CRUDMixin:
                 qs = qs.filter(created_at__lte=et + " 23:59:59" if len(et) <= 10 else et)
         return qs
 
+    @extend_schema(
+        parameters=[ListQuerySerializer],
+        responses={200: OpenApiResponse(description="返回 {current, size, total, records} 分页结构")},
+        summary="列表（分页）",
+    )
     def list(self, request):
         qs = self._apply_query_filters(self._base_qs(), request)
         data = paginate(qs, request, self.list_serializer_class or self.serializer_class)

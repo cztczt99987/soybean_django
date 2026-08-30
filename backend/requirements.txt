@@ -11,6 +11,9 @@ redis>=5.0
 # -------- 服务器监控（CPU/内存/磁盘/网络指标采集） --------
 psutil>=5.9
 
+# -------- 定时任务调度器（CRON / 固定间隔 / 指定时间触发） --------
+apscheduler>=3.10,<4
+
 # -------- MySQL 驱动 (Windows 下建议用: pip install mysqlclient，有预编译 wheel) --------
 # mysqlclient>=2.2
 
