@@ -225,6 +225,35 @@ def _log_operation(
 # ===================== 通用 CRUD 基类 =====================
 
 
+def crud_schema_view(resource: str, tag: str) -> dict:
+    """生成 ViewSet 标准 CRUD 动作的 extend_schema_view 参数，统一 Swagger 中文文档。
+
+    用法: ``@extend_schema_view(**crud_schema_view("用户", "系统管理"))``
+    """
+    return {
+        "list": extend_schema(
+            summary=f"{resource}列表",
+            description=f"分页查询{resource}，支持 keyword 模糊搜索、beginTime/endTime 时间范围及各模块专用筛选参数",
+            parameters=[ListQuerySerializer],
+            responses={200: OpenApiResponse(description="统一响应：data = {current, size, total, records} 分页结构")},
+            tags=[tag],
+        ),
+        "retrieve": extend_schema(summary=f"{resource}详情", description=f"按 ID 查询单条{resource}", tags=[tag]),
+        "create": extend_schema(summary=f"新增{resource}", description=f"创建一条{resource}记录", tags=[tag]),
+        "update": extend_schema(
+            summary=f"修改{resource}", description=f"按 ID 更新{resource}，支持只提交部分字段", tags=[tag]
+        ),
+        "destroy": extend_schema(
+            summary=f"删除{resource}", description="按 ID 删除；软删除模型仅标记 is_deleted", tags=[tag]
+        ),
+        "batch_delete": extend_schema(
+            summary=f"批量删除{resource}",
+            description="请求体传 ids（或 idList）数组，批量删除；软删除模型仅标记 is_deleted",
+            tags=[tag],
+        ),
+    }
+
+
 class _CRUDMixin:
     """把 5 个常用操作 (list/tree/create/update/delete/batch_delete) 统一起来。
 
@@ -285,12 +314,8 @@ class _CRUDMixin:
                 qs = qs.filter(created_at__lte=et + " 23:59:59" if len(et) <= 10 else et)
         return qs
 
-    @extend_schema(
-        parameters=[ListQuerySerializer],
-        responses={200: OpenApiResponse(description="返回 {current, size, total, records} 分页结构")},
-        summary="列表（分页）",
-    )
     def list(self, request):
+        # Swagger 文档由各 ViewSet 类上的 @extend_schema_view(**crud_schema_view(...)) 提供
         qs = self._apply_query_filters(self._base_qs(), request)
         data = paginate(qs, request, self.list_serializer_class or self.serializer_class)
         return Response(ok(data))

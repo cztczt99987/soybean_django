@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 from django.conf import settings
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
 
 from ..common import APIView, ok, require_auth
@@ -19,6 +20,19 @@ BOOT_TIME = time.time()
 class ServerInfoView(APIView):
     """服务器基础信息（只读）。"""
 
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                description=(
+                    "返回 {os: 操作系统信息, cpu: CPU 使用率/核心/频率, memory: 内存与交换分区, "
+                    "disks: [磁盘分区占用], net: 网络收发统计, process: 进程/运行时长等}"
+                )
+            )
+        },
+        summary="获取服务器监控信息",
+        description="采集当前服务器的操作系统、CPU、内存、磁盘分区、网络 IO 与进程运行信息，供监控管理页面展示。需登录。",
+        tags=["监控管理"],
+    )
     @require_auth
     def get(self, request):
         import psutil  # noqa: PLC0415

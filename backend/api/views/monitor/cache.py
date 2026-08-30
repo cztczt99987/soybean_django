@@ -137,6 +137,11 @@ class CacheListView(APIView):
         parameters=[CacheListQuerySerializer],
         responses={200: OpenApiResponse(description="返回 {mode, total, records, categories, serverInfo}")},
         summary="缓存列表",
+        description=(
+            "扫描 Redis 中的缓存键，返回 key/业务分类/数据类型/内存占用/TTL 明细，并按分类汇总统计；"
+            "支持 keyword 模糊匹配。未启用 Redis（LocMem 模式）时返回空列表。需登录。"
+        ),
+        tags=["监控管理"],
     )
     @require_auth
     def get(self, request):
@@ -210,6 +215,11 @@ class CacheDeleteView(APIView):
         request=CacheDeleteRequestSerializer,
         responses={200: OpenApiResponse(description="返回 {deleted}，清空全部时为 -1")},
         summary="删除缓存",
+        description=(
+            "支持四种方式：{ key } 删除单个、{ keys: [] } 批量删除、{ category } 按业务分类删除、"
+            "{ all: true } 清空当前库。操作会记录操作日志。需登录。"
+        ),
+        tags=["监控管理"],
     )
     @require_auth
     def post(self, request):
@@ -280,6 +290,8 @@ class CacheDetailView(APIView):
         parameters=[CacheDetailQuerySerializer],
         responses={200: OpenApiResponse(description="返回 {key, type, ttl, value}")},
         summary="缓存详情",
+        description="按 key 查看单个缓存对象的数据类型、剩余过期时间与反序列化后的内容。需登录。",
+        tags=["监控管理"],
     )
     @require_auth
     def get(self, request):

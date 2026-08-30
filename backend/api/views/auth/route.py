@@ -6,7 +6,7 @@ constantRoutes（内置路由）/ userRoutes（按当前角色动态菜单）/ i
 from __future__ import annotations
 
 from django.core.cache import cache
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
 
 from ...models import Menu, User
@@ -65,6 +65,12 @@ def _menu_to_tree_nodes(menus, parent_id=None):
 
 
 class ConstantRoutesView(APIView):
+    @extend_schema(
+        responses={200: OpenApiResponse(description="返回前端内置常量路由数组（403/404/500/login）")},
+        summary="获取常量路由",
+        description="公开接口。返回与前端 elegant-router 生成的静态常量路由一致的配置（403、404、500、login），供前端路由初始化使用。",
+        tags=["动态路由"],
+    )
     def get(self, request):
         # 与前端 elegant-router 生成的静态常量路由保持一致：
         # 单级路由 component 必须是 "layout.blank$view.<name>" 格式
@@ -99,6 +105,16 @@ class ConstantRoutesView(APIView):
 
 
 class UserRoutesView(APIView):
+    @extend_schema(
+        responses={200: OpenApiResponse(description="返回 {routes: [路由树], home: 'home'}；路由树含 meta 与 children")},
+        summary="获取当前用户动态路由",
+        description=(
+            "按当前登录用户的角色返回可见菜单构建的前端路由树（含首页），"
+            "超管返回全部启用菜单，普通用户仅返回被授权的菜单及其祖先目录。"
+            "结果按用户缓存（角色/菜单变更后自动失效）。需登录。"
+        ),
+        tags=["动态路由"],
+    )
     @require_auth
     def get(self, request):
         u: User = request.sys_user
@@ -160,7 +176,10 @@ class UserRoutesView(APIView):
 class IsRouteExistView(APIView):
     @extend_schema(
         parameters=[RouteExistQuerySerializer],
+        responses={200: OpenApiResponse(description="data 为布尔值，表示路由是否存在")},
         summary="检查路由是否存在",
+        description="按路由名（menu.name）检查路由是否存在于常量路由或启用状态的菜单中，用于前端路由校验。",
+        tags=["动态路由"],
     )
     def get(self, request):
         route_name = (request.query_params.get("routeName") or "").strip()

@@ -33,6 +33,8 @@ class FileListView(APIView):
         parameters=[FileListQuerySerializer],
         responses={200: OpenApiResponse(description="返回 {currentPath, parentPath, entries, disk}")},
         summary="目录浏览",
+        description="按 path 浏览服务器目录，返回子项列表（名称/类型/大小/修改时间）与所在磁盘占用；路径受白名单安全校验。需登录。",
+        tags=["监控管理"],
     )
     @require_auth
     def get(self, request):
@@ -100,6 +102,8 @@ class FileDownloadView(APIView):
         parameters=[FileDownloadQuerySerializer],
         responses={200: OpenApiResponse(description="文件流（Content-Disposition 附件下载）")},
         summary="文件下载",
+        description="按 path 下载服务器上的单个文件，以附件流形式返回；路径受白名单安全校验。需登录。",
+        tags=["监控管理"],
     )
     @require_auth
     def get(self, request):

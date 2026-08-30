@@ -29,6 +29,8 @@ class StorageConfigView(APIView):
         parameters=[StorageTypeQuerySerializer],
         responses={200: OpenApiResponse(description="返回 {type, config, active}")},
         summary="读取存储配置",
+        description="读取指定存储类型（local/aliyun/tencent/qiniu）的配置项与当前激活的存储方式。需登录。",
+        tags=["监控管理"],
     )
     @require_auth
     def get(self, request):
@@ -53,6 +55,11 @@ class StorageConfigView(APIView):
         request=StorageSaveRequestSerializer,
         responses={200: OpenApiResponse(description="保存/切换返回 true；验证返回 {valid: true}")},
         summary="保存 / 验证 / 切换存储配置",
+        description=(
+            "三种用途：{ type, config } 保存配置；{ type, validate: true } 仅验证配置有效性不落库；"
+            "{ active: type } 切换当前使用的存储方式。需登录。"
+        ),
+        tags=["监控管理"],
     )
     @require_auth
     def post(self, request):

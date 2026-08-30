@@ -91,8 +91,10 @@ class CaptchaView(APIView):
     """获取图形验证码，返回 {key, svg}，登录时需回传。"""
 
     @extend_schema(
-        responses={200: OpenApiResponse(description="返回 {key, svg}")},
+        responses={200: OpenApiResponse(description="返回 {key, svg}；key 随登录请求回传，svg 为图片内容，5 分钟有效")},
         summary="获取图形验证码",
+        description="生成 20 以内加减法算术验证码（如 12+7=?），结果必为正数。验证码一次性使用，有效期 5 分钟。",
+        tags=["认证鉴权"],
     )
     def get(self, request):
         now = time.time()
@@ -106,6 +108,12 @@ class CaptchaView(APIView):
 
 
 class HealthCheckView(APIView):
+    @extend_schema(
+        responses={200: OpenApiResponse(description="返回 {status: 'ok', time}")},
+        summary="健康检查",
+        description="公开接口，用于探活与服务可用性监测，无需登录。",
+        tags=["认证鉴权"],
+    )
     def get(self, request):
         return Response(ok({"status": "ok", "time": timezone.now().isoformat()}))
 
@@ -113,8 +121,14 @@ class HealthCheckView(APIView):
 class LoginView(APIView):
     @extend_schema(
         request=LoginRequestSerializer,
-        responses={200: OpenApiResponse(description="返回 {token, refreshToken}")},
+        responses={200: OpenApiResponse(description="成功返回 {token, refreshToken}；失败返回对应错误信息")},
         summary="登录获取 Token",
+        description=(
+            "账号密码登录。需先调用 GET /api/auth/captcha 获取图形验证码，"
+            "请求时携带 captchaKey 与 captchaCode（计算结果）。"
+            "成功后返回 token 与 refreshToken，后续请求通过 Authorization: Bearer &lt;token&gt; 携带。"
+        ),
+        tags=["认证鉴权"],
     )
     def post(self, request):
         start = time.perf_counter()
@@ -163,6 +177,12 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    @extend_schema(
+        responses={200: OpenApiResponse(description="data 固定为 true")},
+        summary="退出登录",
+        description="注销当前 Token 及其对应的 refreshToken（从服务端移除）。需在请求头携带 Authorization: Bearer <token>。",
+        tags=["认证鉴权"],
+    )
     def post(self, request):
         token = _get_token_from_request(request)
         if token:
@@ -173,6 +193,19 @@ class LogoutView(APIView):
 
 
 class UserInfoView(APIView):
+    @extend_schema(
+        responses={
+            200: OpenApiResponse(
+                description=(
+                    "返回 {userId, userName, nickname, avatar, email, phone, "
+                    "dept: {id, name, code}, roles: [角色编码], buttons: [按钮权限标识]}"
+                )
+            )
+        },
+        summary="获取当前用户信息",
+        description="查询当前登录用户的基本信息、角色编码与按钮权限标识；超管角色自动持有所有按钮权限。需登录。",
+        tags=["认证鉴权"],
+    )
     @require_auth
     def get(self, request):
         u: User = request.sys_user
