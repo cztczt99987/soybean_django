@@ -5,16 +5,25 @@ import { request } from '../request';
  *
  * @param userName User name
  * @param password Password
+ * @param captchaKey Captcha key from `/auth/captcha`
+ * @param captchaCode User input captcha code
  */
-export function fetchLogin(userName: string, password: string) {
+export function fetchLogin(userName: string, password: string, captchaKey: string, captchaCode: string) {
   return request<Api.Auth.LoginToken>({
     url: '/auth/login',
     method: 'post',
     data: {
       userName,
-      password
+      password,
+      captchaKey,
+      captchaCode
     }
   });
+}
+
+/** Get image captcha */
+export function fetchCaptcha() {
+  return request<Api.Auth.Captcha>({ url: '/auth/captcha' });
 }
 
 /** Get user info */

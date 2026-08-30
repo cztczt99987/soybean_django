@@ -11,6 +11,17 @@ export default defineConfig(configEnv => {
 
   const enableProxy = configEnv.command === 'serve' && !configEnv.isPreview;
 
+  // Swagger 文档页以 iframe 嵌入 Django /api/docs/，页面内部相对引用
+  // /static/（swagger-ui 资源）与 /api/schema/，需补充代理到后端域名
+  const backendOrigin = new URL(viteEnv.VITE_SERVICE_BASE_URL).origin;
+  const swaggerProxy: Record<string, { target: string; changeOrigin: boolean }> =
+    enableProxy && viteEnv.VITE_HTTP_PROXY === 'Y'
+      ? {
+          '/api': { target: backendOrigin, changeOrigin: true },
+          '/static': { target: backendOrigin, changeOrigin: true }
+        }
+      : {};
+
   return {
     base: viteEnv.VITE_BASE_URL,
     resolve: {
@@ -35,7 +46,7 @@ export default defineConfig(configEnv => {
       host: '0.0.0.0',
       port: 9527,
       open: true,
-      proxy: createViteProxy(viteEnv, enableProxy)
+      proxy: { ...(createViteProxy(viteEnv, enableProxy) ?? {}), ...swaggerProxy }
     },
     preview: {
       port: 9725

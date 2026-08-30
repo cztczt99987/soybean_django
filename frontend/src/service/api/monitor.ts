@@ -18,6 +18,10 @@ export const cacheApi = {
     request<{ deleted: number }>({ url: '/monitor/cache/delete', method: 'post', data: { key } }),
   batchRemove: (keys: string[]) =>
     request<{ deleted: number }>({ url: '/monitor/cache/delete', method: 'post', data: { keys } }),
+  removeCategory: (category: string) =>
+    request<{ deleted: number }>({ url: '/monitor/cache/delete', method: 'post', data: { category } }),
+  detail: (key: string) =>
+    request<Api.Monitor.CacheDetailResp>({ url: '/monitor/cache/detail', params: { key } }),
   cleanAll: () =>
     request<{ deleted: number }>({ url: '/monitor/cache/delete', method: 'post', data: { all: true } })
 };

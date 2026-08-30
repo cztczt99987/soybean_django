@@ -166,6 +166,8 @@ const routeMap: RouteMap = {
   "403": "/403",
   "404": "/404",
   "500": "/500",
+  "apis": "/apis",
+  "apis_docs": "/apis/docs",
   "home": "/home",
   "iframe-page": "/iframe-page/:url",
   "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
@@ -181,7 +183,11 @@ const routeMap: RouteMap = {
   "system_menu": "/system/menu",
   "system_post": "/system/post",
   "system_role": "/system/role",
-  "system_user": "/system/user"
+  "system_user": "/system/user",
+  "task": "/task",
+  "task_job": "/task/job",
+  "task_node": "/task/node",
+  "task_scheduler": "/task/scheduler"
 };
 
 /**

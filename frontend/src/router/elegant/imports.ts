@@ -20,6 +20,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   500: () => import("@/views/_builtin/500/index.vue"),
   "iframe-page": () => import("@/views/_builtin/iframe-page/[url].vue"),
   login: () => import("@/views/_builtin/login/index.vue"),
+  apis_docs: () => import("@/views/apis_docs/index.vue"),
   home: () => import("@/views/home/index.vue"),
   monitor_cache: () => import("@/views/monitor_cache/index.vue"),
   monitor_file: () => import("@/views/monitor_file/index.vue"),
@@ -32,4 +33,7 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   system_post: () => import("@/views/system_post/index.vue"),
   system_role: () => import("@/views/system_role/index.vue"),
   system_user: () => import("@/views/system_user/index.vue"),
+  task_job: () => import("@/views/task_job/index.vue"),
+  task_node: () => import("@/views/task_node/index.vue"),
+  task_scheduler: () => import("@/views/task_scheduler/index.vue"),
 };

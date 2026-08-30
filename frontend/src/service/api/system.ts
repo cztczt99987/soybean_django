@@ -20,6 +20,11 @@ function qs(params?: Query) {
 
 /** ========== 通用 CRUD 工具 ========== */
 
+/** 拼接路径：规范化斜杠并保留尾斜杠（DRF 路由要求），避免双斜杠 404 或无斜杠 500 */
+function joinUrl(base: string, sub?: string | number) {
+  return sub === undefined ? base : `${base.replace(/\/+$/, '')}/${sub}/`;
+}
+
 function list<T>(url: string, params?: Query) {
   return request<T>({ url: url + qs(params), method: 'get' });
 }
@@ -27,19 +32,19 @@ function tree<T>(url: string, params?: Query) {
   return request<T>({ url: url + qs(params), method: 'get' });
 }
 function detail<T>(url: string, id: number | string) {
-  return request<T>({ url: `${url}/${id}`, method: 'get' });
+  return request<T>({ url: joinUrl(url, id), method: 'get' });
 }
 function add<T>(url: string, data: any) {
   return request<T>({ url, method: 'post', data });
 }
 function update<T>(url: string, id: number | string, data: any) {
-  return request<T>({ url: `${url}/${id}`, method: 'put', data });
+  return request<T>({ url: joinUrl(url, id), method: 'put', data });
 }
 function remove(url: string, id: number | string) {
-  return request<boolean>({ url: `${url}/${id}`, method: 'delete' });
+  return request<boolean>({ url: joinUrl(url, id), method: 'delete' });
 }
 function batchDelete(url: string, ids: (number | string)[]) {
-  return request<boolean>({ url: `${url}/batch-delete`, method: 'post', data: { ids } });
+  return request<boolean>({ url: joinUrl(url, 'batch-delete'), method: 'post', data: { ids } });
 }
 
 /** ========== 用户 ========== */
@@ -53,9 +58,9 @@ export const userApi = {
   remove: (id: number) => remove('/system/user/', id),
   batchDelete: (ids: number[]) => batchDelete('/system/user/', ids),
   resetPwd: (id: number, password?: string) =>
-    request<boolean>({ url: `/system/user/${id}/reset-pwd`, method: 'post', data: { password } }),
+    request<boolean>({ url: `/system/user/${id}/reset-pwd/`, method: 'post', data: { password } }),
   changeStatus: (id: number, status: '1' | '0') =>
-    request<boolean>({ url: `/system/user/${id}/change-status`, method: 'post', data: { status } })
+    request<boolean>({ url: `/system/user/${id}/change-status/`, method: 'post', data: { status } })
 };
 
 /** ========== 角色 ========== */
@@ -69,8 +74,8 @@ export const roleApi = {
     update<Api.System.Role>('/system/role/', id, data),
   remove: (id: number) => remove('/system/role/', id),
   batchDelete: (ids: number[]) => batchDelete('/system/role/', ids),
-  assignMenus: (id: number, menuIds: number[]) =>
-    request<boolean>({ url: `/system/role/${id}/assign-menus`, method: 'post', data: { menuIds } })
+  assignMenus: (id: number, menuIds: number[], dataScope?: Api.System.Role['data_scope']) =>
+    request<boolean>({ url: `/system/role/${id}/assign-menus/`, method: 'post', data: { menuIds, dataScope } })
 };
 
 /** ========== 菜单 ========== */

@@ -101,6 +101,14 @@ export const request = createFlatRequest(
     onError(error) {
       // when the request is fail, you can show error message
 
+      // 会话失效（HTTP 401）：清除本地登录态并跳转登录页，避免停留在无法访问的页面
+      // 注意：后端 401 返回 HTTP 401 状态码，axios 直接走 error 分支，不会进入 onBackendFail
+      if (error.response?.status === 401) {
+        const authStore = useAuthStore();
+        authStore.resetStore();
+        return;
+      }
+
       let message = error.message;
       let backendErrorCode = '';
 

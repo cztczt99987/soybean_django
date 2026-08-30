@@ -63,6 +63,32 @@ declare namespace Api {
       size: number;
       /** 剩余过期秒数；-1 表示不过期 */
       ttl: number;
+      /** 业务分类（剥离 Django 前缀/版本号后的首段） */
+      category: string;
+      /** 业务分类展示名 */
+      categoryLabel: string;
+    }
+
+    /** 缓存分类汇总 */
+    interface CacheCategorySummary {
+      /** 分类名（原始段） */
+      name: string;
+      /** 展示名 */
+      label: string;
+      /** 键数量 */
+      count: number;
+      /** 总占用字节 */
+      size: number;
+    }
+
+    /** 缓存键内容详情 */
+    interface CacheDetailResp {
+      key: string;
+      type: string;
+      /** 剩余过期秒数；-1 表示不过期 */
+      ttl: number;
+      /** 缓存内容（字符串化后） */
+      value: string;
     }
 
     interface CacheSearchParams {
@@ -73,13 +99,28 @@ declare namespace Api {
       mode: 'redis' | 'locmem';
       total: number;
       records: CacheRow[];
+      categories: CacheCategorySummary[];
       serverInfo: {
         redisVersion?: string;
+        /** 运行模式：单机/集群 */
+        runMode?: string;
+        port?: number;
+        connectedClients?: number;
+        uptimeDays?: number;
         usedMemory?: number;
         usedMemoryHuman?: string;
+        maxMemory?: number;
         maxMemoryHuman?: string;
-        connectedClients?: number;
+        /** 瞬时 CPU 占用（单核百分比） */
+        usedCpuPercent?: number;
+        aofEnabled?: boolean;
+        rdbStatus?: string;
         dbSize?: number;
+        /** 瞬时网络 IO（KB/s） */
+        netInKps?: number;
+        netOutKps?: number;
+        /** 命令统计：{ 命令名: 调用次数 } */
+        commandStats?: Record<string, number>;
       };
     }
 

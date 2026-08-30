@@ -10,6 +10,14 @@ declare namespace Api {
       refreshToken: string;
     }
 
+    /** 图形验证码 */
+    interface Captcha {
+      /** 验证码 key，登录时回传 */
+      key: string;
+      /** SVG 图片字符串 */
+      svg: string;
+    }
+
     interface UserInfo {
       userId: string;
       userName: string;

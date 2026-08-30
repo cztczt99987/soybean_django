@@ -94,15 +94,23 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
    *
    * @param userName User name
    * @param password Password
+   * @param captcha Image captcha { key, code }
    * @param [redirect=true] Whether to redirect after login. Default is `true`
+   * @returns Whether the login is successful
    */
-  async function login(userName: string, password: string, redirect = true) {
+  async function login(
+    userName: string,
+    password: string,
+    captcha: { key: string; code: string },
+    redirect = true
+  ) {
     startLoading();
 
-    const { data: loginToken, error } = await fetchLogin(userName, password);
+    const { data: loginToken, error } = await fetchLogin(userName, password, captcha.key, captcha.code);
+    let pass = false;
 
     if (!error) {
-      const pass = await loginByToken(loginToken);
+      pass = await loginByToken(loginToken);
 
       if (pass) {
         // Check if the tab needs to be cleared
@@ -126,6 +134,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     }
 
     endLoading();
+
+    return pass;
   }
 
   async function loginByToken(loginToken: Api.Auth.LoginToken) {

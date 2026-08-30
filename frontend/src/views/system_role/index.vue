@@ -1,12 +1,13 @@
 <script setup lang="tsx">
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { NButton, NPopconfirm, NTag } from 'naive-ui';
-import type { TreeInst } from 'naive-ui';
+import type { TreeInst, TreeOption } from 'naive-ui';
 import type { DataScope, EnableStatus } from '@/constants/business';
-import { dataScopeRecord, enableStatusRecord } from '@/constants/business';
+import { dataScopeOptions, dataScopeRecord, enableStatusRecord } from '@/constants/business';
 import { menuApi, roleApi } from '@/service/api';
 import { useAppStore } from '@/store/modules/app';
 import { defaultTransform, useNaivePaginatedTable, useTableOperate } from '@/hooks/common/table';
+import { translateOptions } from '@/utils/common';
 import { $t } from '@/locales';
 import RoleOperateDrawer from './modules/role-operate-drawer.vue';
 import RoleSearch from './modules/role-search.vue';
@@ -150,28 +151,89 @@ function edit(id: number) {
 const assignMenusVisible = ref(false);
 const assignMenusRoleId = ref<number | null>(null);
 const assignMenusRoleName = ref('');
+/** 数据授权 */
+const assignDataScope = ref<DataScope>('1');
 /** 勾选的菜单 id（含半选父目录，提交前合并） */
 const assignMenuIds = ref<number[]>([]);
 const assignMenuPattern = ref('');
+/** 父子联动（开启后勾选自动级联父子节点） */
+const assignCascade = ref(true);
 const menuTreeOptions = ref<Api.System.Menu[]>([]);
+/** 可展开的父节点 key（用于展开/收起切换） */
+const expandableKeys = ref<number[]>([]);
+const assignExpandedKeys = ref<number[]>([]);
 const assignTreeRef = ref<TreeInst | null>(null);
+
+const menuTypeColorMap: Record<string, NaiveUI.ThemeColor> = {
+  '1': 'warning',
+  '2': 'info',
+  '3': 'default'
+};
+
+const menuTypeLocaleMap: Record<string, App.I18n.I18nKey> = {
+  '1': 'page.system.common.menuType.dir',
+  '2': 'page.system.common.menuType.menu',
+  '3': 'page.system.common.menuType.button'
+};
+
+function renderMenuLabel({ option }: { option: TreeOption }) {
+  const menu = option as unknown as Api.System.Menu;
+
+  return (
+    <span class="inline-flex items-center gap-6px">
+      <span>{menu.title}</span>
+      <NTag size="tiny" type={menuTypeColorMap[menu.menu_type]} bordered={false}>
+        {$t(menuTypeLocaleMap[menu.menu_type])}
+      </NTag>
+    </span>
+  );
+}
+
+function collectExpandableKeys(menus: Api.System.Menu[], keys: number[] = []) {
+  menus.forEach(menu => {
+    if (menu.children?.length) {
+      keys.push(menu.id);
+      collectExpandableKeys(menu.children, keys);
+    }
+  });
+  return keys;
+}
 
 async function getMenuTreeOptions() {
   const { error, data: menus } = await menuApi.tree();
 
   if (!error) {
     menuTreeOptions.value = menus ?? [];
+    expandableKeys.value = collectExpandableKeys(menuTreeOptions.value);
+    assignExpandedKeys.value = [...expandableKeys.value];
   }
 }
 
 function handleOpenAssignMenus(row: Api.System.Role) {
   assignMenusRoleId.value = row.id;
   assignMenusRoleName.value = row.name;
+  assignDataScope.value = row.data_scope ?? '1';
   assignMenuIds.value = row.menus ?? [];
   assignMenuPattern.value = '';
+  assignCascade.value = true;
   assignMenusVisible.value = true;
 
   getMenuTreeOptions();
+}
+
+/** 搜索时自动展开全部节点，保证能搜到深层菜单 */
+watch(assignMenuPattern, pattern => {
+  if (pattern) {
+    assignExpandedKeys.value = [...expandableKeys.value];
+  }
+});
+
+function handleToggleExpand() {
+  assignExpandedKeys.value = assignExpandedKeys.value.length ? [] : [...expandableKeys.value];
+}
+
+function handleExpandedKeysChange(keys: Array<string | number>) {
+  assignExpandedKeys.value = keys.map(Number);
 }
 
 function handleAssignCheckedKeys(keys: Array<string | number>) {
@@ -183,15 +245,17 @@ async function handleSubmitAssignMenus() {
     return;
   }
 
-  // 合并完全勾选 + 半选（父目录），保证菜单树父子链完整
+  // 联动时合并半选父目录，保证菜单树父子链完整；非联动时直接使用勾选值
   const checked = (assignTreeRef.value?.getCheckedData().keys ?? []) as Array<string | number>;
-  const indeterminate = (assignTreeRef.value?.getIndeterminateData().keys ?? []) as Array<string | number>;
-  const menuIds = [...new Set([...assignMenuIds.value, ...checked, ...indeterminate])].map(Number);
+  const indeterminate = assignCascade.value
+    ? ((assignTreeRef.value?.getIndeterminateData().keys ?? []) as Array<string | number>)
+    : [];
+  const menuIds = [...new Set([...checked, ...indeterminate])].map(Number);
 
-  const { error } = await roleApi.assignMenus(assignMenusRoleId.value, menuIds);
+  const { error } = await roleApi.assignMenus(assignMenusRoleId.value, menuIds, assignDataScope.value);
 
   if (!error) {
-    window.$message?.success($t('page.system.common.assignMenusSuccess'));
+    window.$message?.success($t('page.system.common.assignPermissionSuccess'));
 
     assignMenusVisible.value = false;
 
@@ -234,42 +298,92 @@ async function handleSubmitAssignMenus() {
         @submitted="getDataByPage"
       />
     </NCard>
-    <NModal
-      v-model:show="assignMenusVisible"
-      preset="card"
-      :title="`${$t('page.system.role.action.assignMenus')} - ${assignMenusRoleName}`"
-      class="w-520px"
-    >
-      <div class="flex-col gap-12px">
-        <NInput v-model:value="assignMenuPattern" clearable :placeholder="$t('common.keywordSearch')">
-          <template #prefix>
-            <icon-ic-round-search class="text-icon" />
-          </template>
-        </NInput>
-        <div class="max-h-400px overflow-auto border border-gray-200 rounded-4px p-8px dark:border-gray-700">
-          <NTree
-            ref="assignTreeRef"
-            :data="menuTreeOptions"
-            key-field="id"
-            label-field="title"
-            children-field="children"
-            checkable
-            cascade
-            block-line
-            default-expand-all
-            :selectable="false"
-            :pattern="assignMenuPattern"
-            :checked-keys="assignMenuIds"
-            @update:checked-keys="handleAssignCheckedKeys"
-          />
+    <NDrawer v-model:show="assignMenusVisible" :width="820" placement="right">
+      <NDrawerContent
+        :title="`【${assignMenusRoleName}】${$t('page.system.role.action.assignPermission')}`"
+        closable
+      >
+        <div class="flex gap-32px lt-sm:flex-col">
+          <!-- 数据授权 -->
+          <div class="w-280px flex-shrink-0">
+            <div class="mb-12px flex items-center gap-8px">
+              <span class="h-16px w-4px rounded-full bg-primary" />
+              <span class="font-medium">{{ $t('page.system.role.assign.dataAuth') }}</span>
+              <NTooltip>
+                <template #trigger>
+                  <icon-ic-round-help-outline class="text-icon" />
+                </template>
+                {{ $t('page.system.role.assign.dataAuthTip') }}
+              </NTooltip>
+            </div>
+            <NSelect v-model:value="assignDataScope" :options="translateOptions(dataScopeOptions)" />
+          </div>
+          <!-- 菜单授权 -->
+          <div class="min-w-0 flex-1">
+            <div class="mb-12px flex items-center gap-8px">
+              <span class="h-16px w-4px rounded-full bg-primary" />
+              <span class="font-medium">{{ $t('page.system.role.assign.menuAuth') }}</span>
+              <NTooltip>
+                <template #trigger>
+                  <icon-ic-round-help-outline class="text-icon" />
+                </template>
+                {{ $t('page.system.role.assign.menuAuthTip') }}
+              </NTooltip>
+            </div>
+            <div class="mb-12px flex items-center gap-12px">
+              <NInput
+                v-model:value="assignMenuPattern"
+                clearable
+                class="flex-1"
+                :placeholder="$t('page.system.role.assign.searchMenu')"
+              >
+                <template #prefix>
+                  <icon-ic-round-search class="text-icon" />
+                </template>
+              </NInput>
+              <NButton secondary @click="handleToggleExpand">
+                <template #icon>
+                  <icon-ic-round-unfold-more v-if="assignExpandedKeys.length" />
+                  <icon-ic-round-unfold-less v-else />
+                </template>
+                {{
+                  assignExpandedKeys.length
+                    ? $t('page.system.role.assign.collapse')
+                    : $t('page.system.role.assign.expand')
+                }}
+              </NButton>
+              <NCheckbox v-model:checked="assignCascade">
+                {{ $t('page.system.role.assign.parentLinkage') }}
+              </NCheckbox>
+            </div>
+            <div class="h-520px overflow-auto border border-gray-200 rounded-4px p-8px dark:border-gray-700">
+              <NTree
+                ref="assignTreeRef"
+                :data="menuTreeOptions"
+                key-field="id"
+                label-field="title"
+                children-field="children"
+                checkable
+                block-line
+                :cascade="assignCascade"
+                :check-strictly="!assignCascade"
+                :expanded-keys="assignExpandedKeys"
+                :pattern="assignMenuPattern"
+                :checked-keys="assignMenuIds"
+                :render-label="renderMenuLabel"
+                @update:checked-keys="handleAssignCheckedKeys"
+                @update:expanded-keys="handleExpandedKeysChange"
+              />
+            </div>
+          </div>
         </div>
-      </div>
-      <template #footer>
-        <NSpace justify="end" :size="16">
-          <NButton @click="assignMenusVisible = false">{{ $t('common.cancel') }}</NButton>
-          <NButton type="primary" @click="handleSubmitAssignMenus">{{ $t('common.confirm') }}</NButton>
-        </NSpace>
-      </template>
-    </NModal>
+        <template #footer>
+          <NSpace justify="end" :size="16">
+            <NButton @click="assignMenusVisible = false">{{ $t('common.cancel') }}</NButton>
+            <NButton type="primary" @click="handleSubmitAssignMenus">{{ $t('common.confirm') }}</NButton>
+          </NSpace>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>

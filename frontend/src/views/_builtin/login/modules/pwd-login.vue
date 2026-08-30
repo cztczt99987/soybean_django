@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
+import { computed, onMounted, reactive } from 'vue';
 // import { loginModuleRecord } from '@/constants/app';
 import { useAuthStore } from '@/store/modules/auth';
 // import { useRouterPush } from '@/hooks/common/router';
 import { useFormRules, useNaiveForm } from '@/hooks/common/form';
+import { fetchCaptcha } from '@/service/api';
 import { $t } from '@/locales';
 
 defineOptions({
@@ -17,11 +18,28 @@ const { formRef, validate } = useNaiveForm();
 interface FormModel {
   userName: string;
   password: string;
+  captcha: string;
 }
 
 const model: FormModel = reactive({
   userName: 'admin',
-  password: 'admin123'
+  password: 'admin123',
+  captcha: ''
+});
+
+const captchaInfo = reactive({ key: '', svg: '' });
+
+async function refreshCaptcha() {
+  const { data, error } = await fetchCaptcha();
+  if (!error && data) {
+    captchaInfo.key = data.key;
+    captchaInfo.svg = data.svg;
+    model.captcha = '';
+  }
+}
+
+onMounted(() => {
+  refreshCaptcha();
 });
 
 const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
@@ -30,13 +48,21 @@ const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
 
   return {
     userName: formRules.userName,
-    password: formRules.pwd
+    password: formRules.pwd,
+    captcha: [{ required: true, message: $t('page.login.common.codePlaceholder') }]
   };
 });
 
 async function handleSubmit() {
   await validate();
-  await authStore.login(model.userName, model.password);
+  const pass = await authStore.login(model.userName, model.password, {
+    key: captchaInfo.key,
+    code: model.captcha
+  });
+  // 登录失败（验证码错误等）后刷新验证码
+  if (!pass) {
+    refreshCaptcha();
+  }
 }
 
 // 注释掉：其他账号登录
@@ -88,6 +114,23 @@ async function handleSubmit() {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       />
     </NFormItem>
+    <NFormItem path="captcha">
+      <div class="w-full flex-y-center gap-12px">
+        <NInput
+          v-model:value="model.captcha"
+          :maxlength="2"
+          :placeholder="$t('page.login.common.captchaPlaceholder')"
+          class="flex-1"
+        />
+        <!-- 点击图片刷新验证码 -->
+        <div
+          class="captcha-img flex-shrink-0 cursor-pointer"
+          :title="$t('page.login.common.captchaPlaceholder')"
+          @click="refreshCaptcha"
+          v-html="captchaInfo.svg"
+        ></div>
+      </div>
+    </NFormItem>
     <NSpace vertical :size="24">
       <NCheckbox>{{ $t('page.login.pwdLogin.rememberMe') }}</NCheckbox>
       <NButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
@@ -118,4 +161,15 @@ async function handleSubmit() {
   </NForm>
 </template>
 
-<style scoped></style>
+<style scoped>
+.captcha-img {
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+  transition: opacity 0.2s;
+}
+
+.captcha-img:hover {
+  opacity: 0.8;
+}
+</style>

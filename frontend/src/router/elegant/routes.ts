@@ -40,6 +40,26 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'apis',
+    path: '/apis',
+    component: 'layout.base',
+    meta: {
+      title: 'apis',
+      i18nKey: 'route.apis'
+    },
+    children: [
+      {
+        name: 'apis_docs',
+        path: '/apis/docs',
+        component: 'view.apis_docs',
+        meta: {
+          title: 'apis_docs',
+          i18nKey: 'route.apis_docs'
+        }
+      }
+    ]
+  },
+  {
     name: 'home',
     path: '/home',
     component: 'layout.base$view.home',
@@ -192,6 +212,52 @@ export const generatedRoutes: GeneratedRoute[] = [
         meta: {
           title: 'system_user',
           i18nKey: 'route.system_user'
+        }
+      }
+    ]
+  },
+  {
+    name: 'task',
+    path: '/task',
+    component: 'layout.base',
+    meta: {
+      title: 'task',
+      i18nKey: 'route.task',
+      icon: 'mdi:clock-time-eight-outline',
+      order: 30
+    },
+    children: [
+      {
+        name: 'task_job',
+        path: '/task/job',
+        component: 'view.task_job',
+        meta: {
+          title: 'task_job',
+          i18nKey: 'route.task_job',
+          icon: 'mdi:calendar-clock',
+          order: 1
+        }
+      },
+      {
+        name: 'task_node',
+        path: '/task/node',
+        component: 'view.task_node',
+        meta: {
+          title: 'task_node',
+          i18nKey: 'route.task_node',
+          icon: 'mdi:server-network',
+          order: 3
+        }
+      },
+      {
+        name: 'task_scheduler',
+        path: '/task/scheduler',
+        component: 'view.task_scheduler',
+        meta: {
+          title: 'task_scheduler',
+          i18nKey: 'route.task_scheduler',
+          icon: 'mdi:monitor-eye',
+          order: 2
         }
       }
     ]
