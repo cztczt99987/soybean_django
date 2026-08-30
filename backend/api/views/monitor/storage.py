@@ -8,16 +8,11 @@ from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework.response import Response
 
 from ...models import Config
-from ...serializers.schemas import StorageSaveRequestSerializer, StorageTypeQuerySerializer
+from ...serializers.schemas import STORAGE_TYPES, StorageSaveRequestSerializer, StorageTypeQuerySerializer
 from ..common import APIView, _log_operation, fail, ok, require_auth
 
-# 存储配置在 sys_config 表中的键名与可选类型
-STORAGE_CONFIG_KEYS = {
-    "local": "storage.local",
-    "aliyun": "storage.aliyun",
-    "tencent": "storage.tencent",
-    "qiniu": "storage.qiniu",
-}
+# 存储配置在 sys_config 表中的键名（类型清单以 serializers.schemas.STORAGE_TYPES 为唯一来源）
+STORAGE_CONFIG_KEYS = {t: f"storage.{t}" for t in STORAGE_TYPES}
 STORAGE_ACTIVE_KEY = "storage.active"
 
 

@@ -11,7 +11,6 @@
 - task/      任务域（定时任务 / 执行日志 / 执行节点 / 调度器）
 """
 
-from ..serializers.common import PaginationMixin
 from .auth import (
     CaptchaView,
     ConstantRoutesView,
@@ -73,7 +72,6 @@ __all__ = [
     "SUCCESS_CODE",
     "ERROR_CODE",
     "AUTH_CODE",
-    "PaginationMixin",
     "ok",
     "fail",
     "paginate",

@@ -46,20 +46,23 @@ _CACHE_CATEGORY_LABELS = {
 }
 
 
-def _cache_key_category(key: str) -> str:
-    """识别缓存 key 的业务分类：剥离 Django 缓存框架自动加的前缀/版本号后，取第一段。
-
-    Django RedisCache 实际 key 形如 "{KEY_PREFIX}:{VERSION}:{业务key}"，
-    其中 KEY_PREFIX 可能为 "soybean_django:"（自带冒号），因此剥离后要再清掉开头多余冒号。
-    """
-    k = key
+def _strip_cache_prefix(key: str) -> str | None:
+    """剥离 Django 缓存 key 的前缀/版本号，返回业务 key；不是 Django 缓存 key 时返回 None。"""
     prefix = getattr(settings, "CACHES", {}).get("default", {}).get("KEY_PREFIX", "")
-    if prefix and k.startswith(prefix):
-        k = k[len(prefix):]
-    k = k.lstrip(":")
+    if not prefix or not key.startswith(prefix):
+        return None
+    k = key[len(prefix):].lstrip(":")
     parts = k.split(":", 1)
     if len(parts) == 2 and parts[0].isdigit():
         k = parts[1]
+    return k or None
+
+
+def _cache_key_category(key: str) -> str:
+    """识别缓存 key 的业务分类：剥离前缀/版本号后取第一段。"""
+    k = _strip_cache_prefix(key)
+    if k is None:
+        k = key.lstrip(":")
     cat = k.split(":", 1)[0].strip()
     return cat or "other"
 
@@ -270,18 +273,6 @@ def _read_key_value(client, key: str, key_type: str):
         return None
 
 
-def _strip_django_cache_prefix(key: str):
-    """剥离 Django 缓存 key 的前缀/版本号，返回业务 key；不是 Django 缓存 key 时返回 None。"""
-    prefix = getattr(settings, "CACHES", {}).get("default", {}).get("KEY_PREFIX", "")
-    if not prefix or not key.startswith(prefix):
-        return None
-    k = key[len(prefix):].lstrip(":")
-    parts = k.split(":", 1)
-    if len(parts) == 2 and parts[0].isdigit():
-        k = parts[1]
-    return k or None
-
-
 class CacheDetailView(APIView):
     """查看单个缓存键的内容：GET /monitor/cache/detail?key=xxx。"""
 
@@ -307,7 +298,7 @@ class CacheDetailView(APIView):
 
         # 优先通过 Django 缓存框架反查（值是 pickle 序列化存储的，直接读 Redis 会得到乱码）
         value = None
-        biz_key = _strip_django_cache_prefix(key)
+        biz_key = _strip_cache_prefix(key)
         if biz_key:
             try:
                 from django.core.cache import cache

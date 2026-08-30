@@ -254,22 +254,6 @@ class TaskSchedulerEngine:
                 if exist:
                     exist.remove()
 
-    def pause_job(self, job_id: int) -> None:
-        with self._lock:
-            if self._scheduler:
-                exist = self._scheduler.get_job(str(job_id))
-                if exist:
-                    exist.pause()
-
-    def resume_job(self, job_id: int) -> None:
-        with self._lock:
-            job = TaskJob.objects.filter(id=job_id, is_deleted=False).first()
-            if job and self._scheduler:
-                if job.status == "1":
-                    self._schedule_job(job)
-                else:
-                    self._schedule_job(job)
-
     def run_once(self, job_id: int) -> None:
         """立即触发一次执行 (异步)。"""
         thread = threading.Thread(target=self._execute, kwargs={"job_id": job_id, "trigger": "manual"}, daemon=True)

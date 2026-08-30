@@ -26,10 +26,6 @@ class TaskJobViewSet(_CRUDMixin, AuthenticatedViewSet):
         else:
             scheduler_engine.schedule_job(instance.id)
 
-    def create(self, request):
-        resp = super().create(request)
-        return resp
-
     def destroy(self, request, pk=None):
         scheduler_engine.unschedule_job(int(pk))
         return super().destroy(request, pk=pk)

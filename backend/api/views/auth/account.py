@@ -24,6 +24,7 @@ from ..common import (
     _log_operation,
     _TOKENS,
     fail,
+    get_client_ip,
     ok,
     require_auth,
 )
@@ -148,10 +149,6 @@ class LoginView(APIView):
             )
             return Response(fail("账号或密码错误"))
         token, refresh = _issue_token(user)
-        user.login_ip = _get_token_from_request and request.META.get("REMOTE_ADDR", "")
-        # 真实登录 IP 走标准 get_client_ip（common 中未导出时在此兜底）
-        from ..common import get_client_ip
-
         user.login_ip = get_client_ip(request)
         user.login_at = timezone.now()
         user.save(update_fields=["login_ip", "login_at"])

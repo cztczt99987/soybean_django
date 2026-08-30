@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-_STORAGE_TYPE_CHOICES = ["local", "aliyun", "tencent", "qiniu"]
+# 存储方式类型清单（唯一来源，views/monitor/storage.py 由此派生配置键）
+STORAGE_TYPES = ["local", "aliyun", "tencent", "qiniu"]
 
 
 # ============ 通用列表查询（ViewSet list） ============
@@ -90,13 +91,13 @@ class FileDownloadQuerySerializer(serializers.Serializer):
 class StorageTypeQuerySerializer(serializers.Serializer):
     """存储配置读取查询参数。"""
 
-    type = serializers.ChoiceField(choices=_STORAGE_TYPE_CHOICES, required=False, default="local", help_text="存储类型")
+    type = serializers.ChoiceField(choices=STORAGE_TYPES, required=False, default="local", help_text="存储类型")
 
 
 class StorageSaveRequestSerializer(serializers.Serializer):
     """存储配置保存 / 验证 / 切换请求体。"""
 
-    type = serializers.ChoiceField(choices=_STORAGE_TYPE_CHOICES, required=False, help_text="存储类型")
+    type = serializers.ChoiceField(choices=STORAGE_TYPES, required=False, help_text="存储类型")
     config = serializers.DictField(required=False, help_text="配置项（type 对应的键值对）")
     validate = serializers.BooleanField(required=False, help_text="仅验证不落库")
-    active = serializers.ChoiceField(choices=_STORAGE_TYPE_CHOICES, required=False, help_text="切换激活存储方式")
+    active = serializers.ChoiceField(choices=STORAGE_TYPES, required=False, help_text="切换激活存储方式")
