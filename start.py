@@ -24,7 +24,7 @@ LOG_DIR = ROOT / "logs"
 BACKEND_LOG = LOG_DIR / "backend.log"
 BACKEND_ERR = LOG_DIR / "backend.err.log"
 DJANGO_PORT = 8000
-VITE_PORT = 5173
+VITE_PORT = 9527  # 与 frontend/vite.config.ts 的 server.port 保持一致
 
 
 def _ok(msg: str) -> None:
@@ -78,19 +78,62 @@ def pnpm_exe() -> str:
 
 
 # ---------------------------------------------------------------------------
-# 2. 检查端口是否被占用
+# 2. 检查端口是否被占用（被占用时自动结束占用进程）
 # ---------------------------------------------------------------------------
-def check_port(port: int, name: str) -> None:
+def _can_bind(port: int) -> bool:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        try:
-            s.bind(("0.0.0.0", port))
-        except OSError:
-            _err(f"端口 {port} ({name}) 已被占用，请先释放该端口后重试。")
-            sys.exit(1)
+        s.bind(("0.0.0.0", port))
+        return True
+    except OSError:
+        return False
     finally:
         s.close()
-    _ok(f"端口 {port} ({name}) 空闲")
+
+
+def _port_owners(port: int) -> list[str]:
+    """用 netstat 找到监听该端口的进程 PID 列表 (仅 Windows)。"""
+    if sys.platform != "win32":
+        return []
+    out = subprocess.run(
+        ["netstat", "-ano"], capture_output=True, text=True
+    ).stdout
+    pids = set()
+    for line in out.splitlines():
+        parts = line.split()
+        # 形如: TCP  0.0.0.0:8000  0.0.0.0:0  LISTENING  1676
+        if len(parts) >= 5 and parts[3] == "LISTENING" and parts[1].endswith(f":{port}"):
+            pids.add(parts[4])
+    return sorted(pids)
+
+
+def _kill_tree(pid: str) -> None:
+    """强制结束进程及其子进程树。"""
+    if sys.platform == "win32":
+        subprocess.call(
+            ["taskkill", "/F", "/T", "/PID", pid],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        import os
+        os.kill(int(pid), signal.SIGKILL)
+
+
+def check_port(port: int, name: str) -> None:
+    if _can_bind(port):
+        _ok(f"端口 {port} ({name}) 空闲")
+        return
+    _warn(f"端口 {port} ({name}) 被占用，正在尝试自动释放 ...")
+    for pid in _port_owners(port):
+        print(f"    - 结束占用进程 PID#{pid}")
+        _kill_tree(pid)
+    time.sleep(1)
+    if _can_bind(port):
+        _ok(f"端口 {port} ({name}) 已释放")
+    else:
+        _err(f"端口 {port} ({name}) 自动释放失败，请手动结束后重试。")
+        sys.exit(1)
 
 
 # ---------------------------------------------------------------------------
@@ -98,24 +141,22 @@ def check_port(port: int, name: str) -> None:
 # ---------------------------------------------------------------------------
 _procs: list[subprocess.Popen] = []
 _log_handles: list = []
+_cleaned = False
 
 
 def _cleanup(signum=None, frame=None) -> None:
+    global _cleaned
+    if _cleaned:  # SIGINT 处理器和 finally 都会调用，只执行一次
+        return
+    _cleaned = True
     print()
     print(">>> 正在停止前后端进程...")
     for p in _procs:
         if not p or p.poll() is not None:
             continue
         try:
-            p.terminate()
-            try:
-                p.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                p.kill()
-                try:
-                    p.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    pass
+            _kill_tree(str(p.pid))  # taskkill /F /T 可结束整个进程树 (含 pnpm.cmd -> node)
+            p.wait(timeout=5)
             print(f"    - 已停止 PID#{p.pid}")
         except Exception as e:
             print(f"    - 停止 PID#{p.pid} 失败: {e}")
@@ -230,9 +271,7 @@ def main() -> None:
     print(f"  API 健康   : http://localhost:{DJANGO_PORT}/api/health")
     print(f"  前端地址   : http://localhost:{VITE_PORT}")
     print()
-    print("  前端代理 /proxy-default 当前指向 apifox mock")
-    print("  如需对接本地 Django，修改 frontend/.env.test:")
-    print(f"    VITE_SERVICE_BASE_URL=http://localhost:{DJANGO_PORT}")
+    print(f"  前端代理 /proxy-default -> frontend/.env.test 的 VITE_SERVICE_BASE_URL")
     print()
     print("  按 Ctrl+C 将同时停止前后端进程并退出")
     print("===========================================================")
