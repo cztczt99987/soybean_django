@@ -10,17 +10,11 @@ from drf_spectacular.utils import (
 )
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from ...models import Config
 from ...serializers import ConfigSerializer
-from ..common import (
-    APIView,
-    AuthenticatedViewSet,
-    _CRUDMixin,
-    crud_schema_view,
-    fail,
-    ok,
-)
+from ..common import AuthenticatedViewSet, _CRUDMixin, crud_schema_view, fail, ok
 
 
 class SystemNameView(APIView):

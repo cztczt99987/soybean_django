@@ -17,5 +17,5 @@ apscheduler>=3.10,<4
 # -------- MySQL 驱动 (Windows 下建议用: pip install mysqlclient，有预编译 wheel) --------
 # mysqlclient>=2.2
 
-# -------- PostgreSQL 驱动 --------
-# psycopg2-binary>=2.9
+# -------- PostgreSQL 驱动 (psycopg3, Django 5.1 自动优先使用; 中文 Windows 下 psycopg2 解码 libpq 消息会崩) --------
+psycopg[binary]>=3.2
